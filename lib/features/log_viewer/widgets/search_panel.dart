@@ -1,43 +1,50 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:logger/features/log_viewer/models/log_search.dart';
 import 'package:logger/ui/app_colors.dart';
 
 class SearchPanel extends StatelessWidget {
   const SearchPanel({
     super.key,
     required this.keywords,
-    required this.keywordLogic,
-    required this.caseSensitiveKeywords,
     required this.controller,
-    required this.activeMatch,
+    required this.activeMatchIndex,
+    required this.matchCount,
+    required this.displayMode,
     required this.onSubmitted,
     required this.onRemoveKeyword,
-    required this.onToggleKeywordLogic,
+    required this.onToggleKeywordMode,
     required this.onToggleMatchCase,
     required this.onPreviousMatch,
     required this.onNextMatch,
+    required this.onDisplayModeChanged,
     required this.onClearSearch,
   });
 
-  final List<String> keywords;
-  final Map<String, String> keywordLogic;
-  final Set<String> caseSensitiveKeywords;
+  final List<SearchKeyword> keywords;
   final TextEditingController controller;
-  final int activeMatch;
+  final int activeMatchIndex;
+  final int matchCount;
+  final SearchDisplayMode displayMode;
   final ValueChanged<String> onSubmitted;
   final ValueChanged<String> onRemoveKeyword;
-  final ValueChanged<String> onToggleKeywordLogic;
+  final ValueChanged<String> onToggleKeywordMode;
   final ValueChanged<String> onToggleMatchCase;
-  final VoidCallback onPreviousMatch;
-  final VoidCallback onNextMatch;
+  final VoidCallback? onPreviousMatch;
+  final VoidCallback? onNextMatch;
+  final ValueChanged<SearchDisplayMode> onDisplayModeChanged;
   final VoidCallback onClearSearch;
 
   @override
   Widget build(BuildContext context) {
     final actions = _SearchActions(
-      activeMatch: activeMatch,
+      keywords: keywords,
+      activeMatchIndex: activeMatchIndex,
+      matchCount: matchCount,
+      displayMode: displayMode,
       onPreviousMatch: onPreviousMatch,
       onNextMatch: onNextMatch,
+      onDisplayModeChanged: onDisplayModeChanged,
       onClearSearch: onClearSearch,
     ).children;
     return Container(
@@ -92,12 +99,12 @@ class SearchPanel extends StatelessWidget {
   List<Widget> _buildTokens(double inputWidth) => [
     ...keywords.map(
       (keyword) => _KeywordChip(
-        value: keyword,
-        logic: keywordLogic[keyword] ?? 'AND',
-        matchCase: caseSensitiveKeywords.contains(keyword),
-        onToggleLogic: () => onToggleKeywordLogic(keyword),
-        onToggleMatchCase: () => onToggleMatchCase(keyword),
-        onRemove: () => onRemoveKeyword(keyword),
+        value: keyword.text,
+        logic: keyword.mode == SearchKeywordMode.and ? 'AND' : 'OR',
+        matchCase: keyword.caseSensitive,
+        onToggleLogic: () => onToggleKeywordMode(keyword.text),
+        onToggleMatchCase: () => onToggleMatchCase(keyword.text),
+        onRemove: () => onRemoveKeyword(keyword.text),
       ),
     ),
     SizedBox(
@@ -124,59 +131,100 @@ class SearchPanel extends StatelessWidget {
 
 class _SearchActions {
   const _SearchActions({
-    required this.activeMatch,
+    required this.keywords,
+    required this.activeMatchIndex,
+    required this.matchCount,
+    required this.displayMode,
     required this.onPreviousMatch,
     required this.onNextMatch,
+    required this.onDisplayModeChanged,
     required this.onClearSearch,
   });
-  final int activeMatch;
-  final VoidCallback onPreviousMatch;
-  final VoidCallback onNextMatch;
+  final List<SearchKeyword> keywords;
+  final int activeMatchIndex;
+  final int matchCount;
+  final SearchDisplayMode displayMode;
+  final VoidCallback? onPreviousMatch;
+  final VoidCallback? onNextMatch;
+  final ValueChanged<SearchDisplayMode> onDisplayModeChanged;
   final VoidCallback onClearSearch;
 
-  List<Widget> get children => [
-    const SizedBox(width: 8),
-    Text(
-      key: const Key('match_counter'),
-      '${activeMatch + 1}/15',
-      style: GoogleFonts.ibmPlexMono(color: AppColors.outline, fontSize: 12),
-    ),
-    const SizedBox(width: 6),
-    Tooltip(
-      message: 'Previous match',
-      child: IconButton(
-        key: const Key('previous_match'),
-        onPressed: onPreviousMatch,
-        icon: const Icon(Icons.keyboard_arrow_up),
-        color: AppColors.secondaryText,
-        constraints: const BoxConstraints.tightFor(width: 24, height: 32),
-        padding: EdgeInsets.zero,
+  List<Widget> get children {
+    final counter = matchCount == 0
+        ? '0/0'
+        : '${activeMatchIndex + 1}/$matchCount';
+    return [
+      const SizedBox(width: 8),
+      PopupMenuButton<SearchDisplayMode>(
+        key: const Key('search_mode_control'),
+        enabled: keywords.isNotEmpty,
+        initialValue: displayMode,
+        onSelected: onDisplayModeChanged,
+        itemBuilder: (context) => const [
+          PopupMenuItem(
+            value: SearchDisplayMode.allLogs,
+            child: Text('All logs'),
+          ),
+          PopupMenuItem(
+            value: SearchDisplayMode.matchesOnly,
+            child: Text('Matches only'),
+          ),
+        ],
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              displayMode == SearchDisplayMode.allLogs
+                  ? 'All logs'
+                  : 'Matches only',
+              style: GoogleFonts.ibmPlexSans(fontSize: 12),
+            ),
+            const Icon(Icons.arrow_drop_down, size: 18),
+          ],
+        ),
       ),
-    ),
-    Tooltip(
-      message: 'Next match',
-      child: IconButton(
-        key: const Key('next_match'),
-        onPressed: onNextMatch,
-        icon: const Icon(Icons.keyboard_arrow_down),
-        color: AppColors.secondaryText,
-        constraints: const BoxConstraints.tightFor(width: 24, height: 32),
-        padding: EdgeInsets.zero,
+      Text(
+        key: const Key('match_counter'),
+        counter,
+        style: GoogleFonts.ibmPlexMono(color: AppColors.outline, fontSize: 12),
       ),
-    ),
-    const SizedBox(width: 4),
-    Tooltip(
-      message: 'Clear search input',
-      child: IconButton(
-        key: const Key('clear_search_input'),
-        onPressed: onClearSearch,
-        icon: const Icon(Icons.close, size: 18),
-        color: AppColors.secondaryText,
-        constraints: const BoxConstraints.tightFor(width: 24, height: 32),
-        padding: EdgeInsets.zero,
+      const SizedBox(width: 6),
+      Tooltip(
+        message: 'Previous match',
+        child: IconButton(
+          key: const Key('previous_match'),
+          onPressed: onPreviousMatch,
+          icon: const Icon(Icons.keyboard_arrow_up),
+          color: AppColors.secondaryText,
+          constraints: const BoxConstraints.tightFor(width: 24, height: 32),
+          padding: EdgeInsets.zero,
+        ),
       ),
-    ),
-  ];
+      Tooltip(
+        message: 'Next match',
+        child: IconButton(
+          key: const Key('next_match'),
+          onPressed: onNextMatch,
+          icon: const Icon(Icons.keyboard_arrow_down),
+          color: AppColors.secondaryText,
+          constraints: const BoxConstraints.tightFor(width: 24, height: 32),
+          padding: EdgeInsets.zero,
+        ),
+      ),
+      const SizedBox(width: 4),
+      Tooltip(
+        message: 'Clear search input',
+        child: IconButton(
+          key: const Key('clear_search_input'),
+          onPressed: onClearSearch,
+          icon: const Icon(Icons.close, size: 18),
+          color: AppColors.secondaryText,
+          constraints: const BoxConstraints.tightFor(width: 24, height: 32),
+          padding: EdgeInsets.zero,
+        ),
+      ),
+    ];
+  }
 }
 
 class _KeywordChip extends StatelessWidget {
