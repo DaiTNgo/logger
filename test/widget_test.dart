@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:logger/data/sample_logs.dart';
 import 'package:logger/features/log_viewer/models/dlt_filter.dart';
 import 'package:logger/features/log_viewer/widgets/filter_strip.dart';
+import 'package:logger/features/log_viewer/widgets/log_table.dart';
 import 'package:logger/main.dart';
 
 Future<void> openFilterMenu(WidgetTester tester) async {
@@ -797,6 +798,81 @@ void main() {
         findsOneWidget,
       );
       expect(find.byKey(const Key('active_log_row_10_42_01')), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'search navigation preserves the table horizontal scroll offset',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(800, 400));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(const MyApp());
+      await tester.enterText(find.byKey(const Key('keyword_input')), 'timeout');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      final tableScrollables = find.descendant(
+        of: find.byType(LogTable),
+        matching: find.byType(Scrollable),
+      );
+      final horizontalScrollable = tester
+          .stateList<ScrollableState>(tableScrollables)
+          .singleWhere((state) => state.position.axis == Axis.horizontal);
+      horizontalScrollable.position.jumpTo(200);
+      await tester.pump();
+      final horizontalOffsetBefore = horizontalScrollable.position.pixels;
+
+      await tester.tap(find.byKey(const Key('next_match')));
+      await tester.pumpAndSettle();
+
+      expect(
+        horizontalScrollable.position.pixels,
+        closeTo(horizontalOffsetBefore, 0.1),
+      );
+      expect(
+        find.byKey(const Key('current_search_match_row_10_48_43')),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'overlapping search navigation settles on the latest active match',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(800, 400));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(const MyApp());
+      for (final keyword in ['System', 'database']) {
+        await tester.enterText(find.byKey(const Key('keyword_input')), keyword);
+        await tester.testTextInput.receiveAction(TextInputAction.done);
+        await tester.pumpAndSettle();
+      }
+      for (final keyword in ['System', 'database']) {
+        final logicControl = find.byKey(Key('keyword_logic_$keyword'));
+        await tester.ensureVisible(logicControl);
+        await tester.tap(logicControl);
+        await tester.pumpAndSettle();
+      }
+
+      await tester.tap(find.byKey(const Key('next_match')));
+      await tester.pump(const Duration(milliseconds: 20));
+      await tester.tap(find.byKey(const Key('remove_database')));
+      await tester.pumpAndSettle();
+
+      final verticalScrollable = tester
+          .stateList<ScrollableState>(
+            find.descendant(
+              of: find.byType(LogTable),
+              matching: find.byType(Scrollable),
+            ),
+          )
+          .singleWhere((state) => state.position.axis == Axis.vertical);
+      expect(find.text('1/1'), findsOneWidget);
+      expect(
+        find.byKey(const Key('current_search_match_row_10_42_01')),
+        findsOneWidget,
+      );
+      expect(verticalScrollable.position.pixels, closeTo(0, 0.1));
     },
   );
 

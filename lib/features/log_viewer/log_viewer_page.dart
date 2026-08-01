@@ -35,6 +35,7 @@ class _LogViewerPageState extends State<LogViewerPage> {
   var _matches = <LogSearchMatch>[];
   var _activeMatchIndex = 0;
   var _displayMode = SearchDisplayMode.allLogs;
+  var _scrollGeneration = 0;
   var _activeDestination = 0;
   var _activeLogIndex = 5;
 
@@ -96,10 +97,14 @@ class _LogViewerPageState extends State<LogViewerPage> {
   }
 
   void _scrollToActiveMatch() {
+    final generation = ++_scrollGeneration;
+    if (_logScrollController.hasClients) {
+      _logScrollController.jumpTo(_logScrollController.offset);
+    }
     if (_matches.isEmpty) return;
     final sourceIndex = _matches[_activeMatchIndex].entryIndex;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
+      if (!_isCurrentScroll(generation, sourceIndex)) return;
       var rowContext = _rowKeys[sourceIndex]?.currentContext;
       final needsPreciseScroll =
           rowContext == null || !_isRowVisible(rowContext);
@@ -108,6 +113,7 @@ class _LogViewerPageState extends State<LogViewerPage> {
             ? _matches.map((match) => match.entryIndex).toList(growable: false)
             : List<int>.generate(sampleLogs.length, (index) => index);
         final visibleIndex = visibleIndexes.indexOf(sourceIndex);
+        if (visibleIndex == -1) return;
         final fraction = visibleIndexes.length <= 1
             ? 0.0
             : visibleIndex / (visibleIndexes.length - 1);
@@ -116,17 +122,44 @@ class _LogViewerPageState extends State<LogViewerPage> {
           duration: const Duration(milliseconds: 150),
           curve: Curves.easeOut,
         );
-        if (!mounted) return;
+        if (!_isCurrentScroll(generation, sourceIndex)) return;
         rowContext = _rowKeys[sourceIndex]?.currentContext;
       }
       if (rowContext != null && rowContext.mounted && needsPreciseScroll) {
-        await Scrollable.ensureVisible(
-          rowContext,
+        final targetOffset = _verticalOffsetForRow(rowContext, 0.5);
+        if (targetOffset == null ||
+            !_isCurrentScroll(generation, sourceIndex)) {
+          return;
+        }
+        await _logScrollController.animateTo(
+          targetOffset,
           duration: const Duration(milliseconds: 150),
-          alignment: 0.5,
+          curve: Curves.easeOut,
         );
+        if (!_isCurrentScroll(generation, sourceIndex)) return;
       }
     });
+  }
+
+  bool _isCurrentScroll(int generation, int sourceIndex) =>
+      mounted &&
+      generation == _scrollGeneration &&
+      _matches.isNotEmpty &&
+      _activeMatchIndex < _matches.length &&
+      _matches[_activeMatchIndex].entryIndex == sourceIndex;
+
+  double? _verticalOffsetForRow(BuildContext context, double alignment) {
+    if (!_logScrollController.hasClients) return null;
+    final renderObject = context.findRenderObject();
+    if (renderObject == null || !renderObject.attached) return null;
+    final viewport = RenderAbstractViewport.of(renderObject);
+    final targetOffset = viewport
+        .getOffsetToReveal(renderObject, alignment)
+        .offset;
+    final position = _logScrollController.position;
+    return targetOffset
+        .clamp(position.minScrollExtent, position.maxScrollExtent)
+        .toDouble();
   }
 
   bool _isRowVisible(BuildContext context) {
