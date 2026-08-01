@@ -3,7 +3,7 @@ import 'package:logger/data/sample_logs.dart';
 import 'package:logger/features/log_viewer/models/dlt_filter.dart';
 import 'package:logger/features/log_viewer/widgets/bottom_navigation.dart';
 import 'package:logger/features/log_viewer/widgets/filter_strip.dart';
-import 'package:logger/features/log_viewer/widgets/log_row.dart';
+import 'package:logger/features/log_viewer/widgets/log_table.dart';
 import 'package:logger/features/log_viewer/widgets/log_viewer_header.dart';
 import 'package:logger/features/log_viewer/widgets/search_panel.dart';
 
@@ -129,16 +129,11 @@ class _LogViewerPageState extends State<LogViewerPage> {
               onClearFilters: () => setState(_filters.clear),
             ),
             Expanded(
-              child: ListView(
-                padding: EdgeInsets.zero,
-                children: [
-                  for (var index = 0; index < sampleLogs.length; index++)
-                    LogRow(
-                      entry: sampleLogs[index],
-                      isActive: index == _activeLogIndex,
-                      onTap: () => setState(() => _activeLogIndex = index),
-                    ),
-                ],
+              child: LogTable(
+                entries: sampleLogs,
+                filters: _filters,
+                activeIndex: _activeLogIndex,
+                onRowTap: (index) => setState(() => _activeLogIndex = index),
               ),
             ),
           ],

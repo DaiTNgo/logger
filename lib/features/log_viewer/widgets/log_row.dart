@@ -15,19 +15,65 @@ class LogRow extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  Widget build(BuildContext context) => LogRowShell(
+    entry: entry,
+    isActive: isActive,
+    onTap: onTap,
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 64,
+          child: Text(
+            entry.time,
+            textAlign: TextAlign.right,
+            style: GoogleFonts.ibmPlexMono(
+              color: AppColors.secondaryText,
+              fontSize: 12,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        SizedBox(
+          width: 40,
+          child: Text(
+            _levelLabel(entry.level),
+            style: GoogleFonts.ibmPlexMono(
+              color: _levelColor(entry.level),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: LogPayloadCell(entry: entry, isActive: isActive),
+        ),
+      ],
+    ),
+  );
+}
+
+class LogRowShell extends StatelessWidget {
+  const LogRowShell({
+    super.key,
+    required this.entry,
+    required this.isActive,
+    required this.onTap,
+    required this.child,
+    this.padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+  });
+
+  final LogEntry entry;
+  final bool isActive;
+  final VoidCallback onTap;
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  @override
   Widget build(BuildContext context) {
     final isWarning = entry.level == LogLevel.warning;
     final isError = entry.level == LogLevel.error;
-    final levelLabel = switch (entry.level) {
-      LogLevel.info => 'INFO',
-      LogLevel.warning => 'WARN',
-      LogLevel.error => 'ERR',
-    };
-    final levelColor = switch (entry.level) {
-      LogLevel.info => AppColors.success,
-      LogLevel.warning => AppColors.warning,
-      LogLevel.error => AppColors.error,
-    };
     final background = isActive
         ? const Color(0x33D0E2FF)
         : isWarning
@@ -55,49 +101,45 @@ class LogRow extends StatelessWidget {
               ),
             ),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: padding,
           child: KeyedSubtree(
             key: isActive
                 ? Key('active_log_row_${entry.time.replaceAll(':', '_')}')
                 : null,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 64,
-                  child: Text(
-                    entry.time,
-                    textAlign: TextAlign.right,
-                    style: GoogleFonts.ibmPlexMono(
-                      color: AppColors.secondaryText,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                SizedBox(
-                  width: 40,
-                  child: Text(
-                    levelLabel,
-                    style: GoogleFonts.ibmPlexMono(
-                      color: levelColor,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _LogMessage(entry: entry, isActive: isActive),
-                ),
-              ],
-            ),
+            child: child,
           ),
         ),
       ),
     );
   }
 }
+
+class LogPayloadCell extends StatelessWidget {
+  const LogPayloadCell({
+    super.key,
+    required this.entry,
+    required this.isActive,
+  });
+
+  final LogEntry entry;
+  final bool isActive;
+
+  @override
+  Widget build(BuildContext context) =>
+      _LogMessage(entry: entry, isActive: isActive);
+}
+
+String _levelLabel(LogLevel level) => switch (level) {
+  LogLevel.info => 'INFO',
+  LogLevel.warning => 'WARN',
+  LogLevel.error => 'ERR',
+};
+
+Color _levelColor(LogLevel level) => switch (level) {
+  LogLevel.info => AppColors.success,
+  LogLevel.warning => AppColors.warning,
+  LogLevel.error => AppColors.error,
+};
 
 class _LogMessage extends StatelessWidget {
   const _LogMessage({required this.entry, required this.isActive});

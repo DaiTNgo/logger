@@ -45,7 +45,13 @@ void main() {
 
     expect(find.text('LogViewer'), findsOneWidget);
     expect(find.byKey(const Key('keyword_count')), findsNothing);
-    expect(find.text('ECU_MAIN'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('filter_strip')),
+        matching: find.text('ECU_MAIN'),
+      ),
+      findsOneWidget,
+    );
     expect(
       find.bySemanticsLabel(
         "Failed to resolve host 'db-replica-sec.internal'. DNS query timeout after 5000ms.",
@@ -55,6 +61,27 @@ void main() {
     expect(find.text('Explorer'), findsOneWidget);
     expect(find.text('Settings'), findsOneWidget);
     semantics.dispose();
+  });
+
+  testWidgets('shows headers for active DLT filters plus fixed columns', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1600, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(const MyApp());
+
+    for (final label in const [
+      'Time',
+      'ECU ID',
+      'APID',
+      'CTID',
+      'Message Type',
+      'Log Level',
+      'Payload',
+    ]) {
+      expect(find.byKey(Key('dlt_column_header_$label')), findsOneWidget);
+    }
+    expect(find.byKey(const Key('dlt_column_header_Trace Type')), findsNothing);
   });
 
   testWidgets('renders every supplied log message and initial filter value', (
@@ -91,7 +118,13 @@ void main() {
       'Error, Fatal',
       'Log',
     ]) {
-      expect(find.text(value), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('filter_strip')),
+          matching: find.text(value),
+        ),
+        findsOneWidget,
+      );
     }
     semantics.dispose();
   });
@@ -140,7 +173,7 @@ void main() {
     ]) {
       expect(find.byKey(Key('add_filter_$fieldId')), findsOneWidget);
     }
-    expect(find.text('Payload'), findsNothing);
+    expect(find.byKey(const Key('add_filter_payload')), findsNothing);
   });
 
   testWidgets('selecting a DLT field adds a multi-value filter chip', (
@@ -173,8 +206,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('filter_value_log_level')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Error'));
-    await tester.tap(find.text('Fatal'));
+    await tester.tap(find.byKey(const Key('filter_option_log_level_1')));
+    await tester.tap(find.byKey(const Key('filter_option_log_level_0')));
     await tester.tapAt(const Offset(10, 500));
     await tester.pumpAndSettle();
 
@@ -274,11 +307,17 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('filter_value_verbose_mode')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Verbose'));
+    await tester.tap(find.byKey(const Key('filter_option_verbose_mode_0')));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('filter_operator_verbose_mode')), findsNothing);
-    expect(find.text('Verbose'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('filter_strip')),
+        matching: find.text('Verbose'),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('a time range stores its start and end values', (tester) async {
@@ -522,8 +561,20 @@ void main() {
     await tester.tap(find.byKey(const Key('remove_filter_ecu_id')));
     await tester.pump();
 
-    expect(find.text('ECU_MAIN'), findsNothing);
-    expect(find.text('TELE'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('filter_strip')),
+        matching: find.text('ECU_MAIN'),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('filter_strip')),
+        matching: find.text('TELE'),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('search actions expose tooltips and keep filters visible', (
@@ -617,10 +668,7 @@ void main() {
     await tester.pumpWidget(const MyApp());
 
     final row = find.byKey(const Key('log_row_10_42_01'));
-    final timestamp = find.descendant(
-      of: row,
-      matching: find.text('10:42:01'),
-    );
+    final timestamp = find.descendant(of: row, matching: find.text('10:42:01'));
     final timestampBeforeTap = tester.getTopLeft(timestamp);
 
     await tester.tap(row);
