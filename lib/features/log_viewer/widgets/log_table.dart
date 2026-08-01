@@ -135,7 +135,7 @@ class _LogTableRow extends StatelessWidget {
           _TableCell(
             width: column.isPayload ? payloadWidth : column.width,
             child: column.isPayload
-                ? LogPayloadCell(entry: entry, isActive: isActive)
+                ? LogPayloadCell(entry: entry)
                 : Text(
                     column.fieldId == null
                         ? entry.time

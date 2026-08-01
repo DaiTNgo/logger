@@ -87,7 +87,6 @@ const sampleLogs = <LogEntry>[
       'session_id': '1',
       'time_range': '2026-08-01 10:48',
     },
-    highlightedWord: 'timeout',
   ),
   LogEntry(
     time: '10:48:38',
@@ -131,7 +130,6 @@ const sampleLogs = <LogEntry>[
       'session_id': '1',
       'time_range': '2026-08-01 10:48',
     },
-    highlightedWord: 'timeout',
   ),
   LogEntry(
     time: '10:49:01',
