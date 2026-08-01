@@ -539,6 +539,102 @@ void main() {
     );
   });
 
+  testWidgets('clearing Start retains End time range', (tester) async {
+    final selectedDate = DateUtils.dateOnly(DateTime.now());
+    await openTimeRangeFilter(tester);
+
+    await selectCalendarDate(
+      tester,
+      const Key('time_range_start_calendar'),
+      const Key('inline_start_calendar'),
+      selectedDate,
+    );
+    await selectCalendarDate(
+      tester,
+      const Key('time_range_end_calendar'),
+      const Key('inline_end_calendar'),
+      selectedDate,
+    );
+
+    await tester.tap(find.byKey(const Key('time_range_clear_start')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('– ${formatDate(selectedDate)} 00:00'), findsOneWidget);
+  });
+
+  testWidgets('clearing End retains Start time range', (tester) async {
+    final selectedDate = DateUtils.dateOnly(DateTime.now());
+    await openTimeRangeFilter(tester);
+
+    await selectCalendarDate(
+      tester,
+      const Key('time_range_start_calendar'),
+      const Key('inline_start_calendar'),
+      selectedDate,
+    );
+    await selectCalendarDate(
+      tester,
+      const Key('time_range_end_calendar'),
+      const Key('inline_end_calendar'),
+      selectedDate,
+    );
+
+    await tester.tap(find.byKey(const Key('time_range_clear_end')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('${formatDate(selectedDate)} 00:00 –'), findsOneWidget);
+  });
+
+  testWidgets('clearing both time range boundaries shows Select', (
+    tester,
+  ) async {
+    final selectedDate = DateUtils.dateOnly(DateTime.now());
+    await openTimeRangeFilter(tester);
+
+    await selectCalendarDate(
+      tester,
+      const Key('time_range_start_calendar'),
+      const Key('inline_start_calendar'),
+      selectedDate,
+    );
+    await selectCalendarDate(
+      tester,
+      const Key('time_range_end_calendar'),
+      const Key('inline_end_calendar'),
+      selectedDate,
+    );
+
+    await tester.tap(find.byKey(const Key('time_range_clear_start')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('time_range_clear_end')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('filter_strip')),
+        matching: find.text('Select...'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('outside child calendar tap dismisses only the child popup', (
+    tester,
+  ) async {
+    await openTimeRangeFilter(tester);
+    await tester.tap(find.byKey(const Key('time_range_start_calendar')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('inline_start_calendar')), findsOneWidget);
+    expect(find.byKey(const Key('filter_dropdown_time_range')), findsOneWidget);
+
+    await tester.tapAt(tester.getCenter(find.text('START DATE & TIME')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('inline_start_calendar')), findsNothing);
+    expect(find.byKey(const Key('filter_dropdown_time_range')), findsOneWidget);
+  });
+
   testWidgets('invalid end retains the start-only filter', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1600, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));
