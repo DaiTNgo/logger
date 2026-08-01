@@ -750,61 +750,93 @@ void main() {
     expect(find.byKey(const Key('dlt_filter_ecu_id')), findsOneWidget);
   });
 
-  testWidgets(
-    'renders padded timeout highlights for inactive and active rows',
-    (tester) async {
-      await tester.pumpWidget(const MyApp());
+  testWidgets('search starts empty and inactive', (tester) async {
+    await tester.pumpWidget(const MyApp());
+    expect(find.text('Aa'), findsNothing);
+    expect(find.text('0/0'), findsOneWidget);
+    expect(
+      find.byKey(const Key('payload_search_highlights_10_48_33')),
+      findsNothing,
+    );
+  });
 
-      final inactive = tester.widget<Container>(
-        find.byKey(const Key('timeout_highlight_10_48_33')),
-      );
-      final inactiveDecoration = inactive.decoration! as BoxDecoration;
-      expect(inactive.padding, const EdgeInsets.symmetric(horizontal: 4));
-      expect(inactiveDecoration.color, const Color(0x66D0E2FF));
-      expect(
-        inactiveDecoration.border,
-        const Border.fromBorderSide(BorderSide(color: Color(0x4D0F62FE))),
-      );
-
-      final active = tester.widget<Container>(
-        find.byKey(const Key('timeout_highlight_10_48_43')),
-      );
-      final activeDecoration = active.decoration! as BoxDecoration;
-      expect(active.padding, const EdgeInsets.symmetric(horizontal: 4));
-      expect(activeDecoration.color, const Color(0xFF0F62FE));
-      expect(
-        tester
-            .widget<Text>(
-              find.descendant(
-                of: find.byKey(const Key('timeout_highlight_10_48_43')),
-                matching: find.text('timeout'),
-              ),
-            )
-            .style
-            ?.color,
-        Colors.white,
-      );
-    },
-  );
-
-  testWidgets('renders the static search controls and Aa chip actions', (
+  testWidgets('submitted payload keyword produces dynamic row matches', (
     tester,
   ) async {
     await tester.pumpWidget(const MyApp());
-
-    expect(find.text('Aa'), findsNWidgets(5));
-    expect(find.byIcon(Icons.subject), findsNothing);
+    await tester.enterText(find.byKey(const Key('keyword_input')), 'timeout');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(find.text('1/2'), findsOneWidget);
     expect(
-      tester
-          .widget<Text>(find.byKey(const Key('match_counter')))
-          .style
-          ?.fontFamily,
-      startsWith('IBMPlexMono'),
+      find.byKey(const Key('payload_search_highlights_10_48_33')),
+      findsOneWidget,
     );
+    expect(
+      find.byKey(const Key('current_search_match_row_10_48_33')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+    'next match moves the active search row without moving selection',
+    (tester) async {
+      await tester.pumpWidget(const MyApp());
+      await tester.tap(find.byKey(const Key('log_row_10_42_01')));
+      await tester.pump();
+      await tester.enterText(find.byKey(const Key('keyword_input')), 'timeout');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('active_log_row_10_42_01')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('next_match')));
+      await tester.pumpAndSettle();
+      expect(find.text('2/2'), findsOneWidget);
+      expect(
+        find.byKey(const Key('current_search_match_row_10_48_43')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('active_log_row_10_42_01')), findsOneWidget);
+    },
+  );
+
+  testWidgets('Matches only hides nonmatching rows', (tester) async {
+    await tester.pumpWidget(const MyApp());
+    await tester.enterText(find.byKey(const Key('keyword_input')), 'timeout');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('search_mode_control')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Matches only').last);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('log_row_10_48_33')), findsOneWidget);
+    expect(find.byKey(const Key('log_row_10_48_43')), findsOneWidget);
+    expect(find.byKey(const Key('log_row_10_42_01')), findsNothing);
+  });
+
+  testWidgets('Matches only shows an empty state for zero results', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MyApp());
+    await tester.enterText(
+      find.byKey(const Key('keyword_input')),
+      'not-present',
+    );
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('search_mode_control')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Matches only').last);
+    await tester.pumpAndSettle();
+    expect(find.text('No logs match the current search'), findsOneWidget);
+    expect(find.text('0/0'), findsOneWidget);
   });
 
   testWidgets('removing a keyword updates the count', (tester) async {
     await tester.pumpWidget(const MyApp());
+    await tester.enterText(find.byKey(const Key('keyword_input')), 'timeout');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('remove_timeout')));
     await tester.pump();
@@ -872,8 +904,14 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(const MyApp());
+    for (final keyword in ['timeout', 'error']) {
+      await tester.enterText(find.byKey(const Key('keyword_input')), keyword);
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+    }
 
     final logicControl = find.byKey(const Key('keyword_logic_timeout'));
+    await tester.ensureVisible(logicControl);
     await tester.tap(logicControl);
     await tester.pump();
 
@@ -902,6 +940,9 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(const MyApp());
+    await tester.enterText(find.byKey(const Key('keyword_input')), 'timeout');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
 
     final logicX = tester
         .getCenter(find.byKey(const Key('keyword_logic_timeout')))
@@ -949,6 +990,9 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(const MyApp());
+    await tester.enterText(find.byKey(const Key('keyword_input')), 'timeout');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('advanced_filters_toggle')), findsNothing);
     expect(find.byKey(const Key('filter_strip')), findsOneWidget);
@@ -960,11 +1004,16 @@ void main() {
 
   testWidgets('match case is configured per keyword', (tester) async {
     await tester.pumpWidget(const MyApp());
+    for (final keyword in ['timeout', 'error']) {
+      await tester.enterText(find.byKey(const Key('keyword_input')), keyword);
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+    }
 
     await tester.tap(find.byKey(const Key('keyword_match_case_timeout')));
     await tester.pump();
 
-    expect(find.byKey(const Key('search_mode_control')), findsNothing);
+    expect(find.byKey(const Key('search_mode_control')), findsOneWidget);
     expect(
       tester
           .widget<Text>(find.byKey(const Key('keyword_match_case_timeout')))
@@ -988,32 +1037,14 @@ void main() {
     expect(find.byTooltip('Match case for timeout'), findsOneWidget);
   });
 
-  testWidgets('match navigation clamps the counter between one and fifteen', (
-    tester,
-  ) async {
-    await tester.pumpWidget(const MyApp());
-
-    await tester.tap(find.byKey(const Key('previous_match')));
-    await tester.tap(find.byKey(const Key('previous_match')));
-    await tester.pump();
-    expect(find.byKey(const Key('match_counter')), findsOneWidget);
-    expect(find.text('1/15'), findsOneWidget);
-
-    for (var index = 0; index < 15; index++) {
-      await tester.tap(find.byKey(const Key('next_match')));
-    }
-    await tester.pump();
-    expect(find.text('15/15'), findsOneWidget);
-
-    await tester.tap(find.byKey(const Key('next_match')));
-    await tester.pump();
-    expect(find.text('15/15'), findsOneWidget);
-  });
-
   testWidgets('search-action close clears only the unsubmitted input', (
     tester,
   ) async {
     await tester.pumpWidget(const MyApp());
+
+    await tester.enterText(find.byKey(const Key('keyword_input')), 'timeout');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
 
     await tester.enterText(find.byKey(const Key('keyword_input')), 'latency');
     await tester.tap(find.byKey(const Key('clear_search_input')));
@@ -1064,27 +1095,71 @@ void main() {
     expect(find.byKey(const Key('log_row_10_42_01')), findsOneWidget);
   });
 
-  testWidgets('narrow search controls scroll to and operate an action', (
+  testWidgets('match case is evaluated per submitted keyword', (tester) async {
+    await tester.pumpWidget(const MyApp());
+    await tester.enterText(find.byKey(const Key('keyword_input')), 'Timeout');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(find.text('1/2'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('keyword_match_case_Timeout')));
+    await tester.pumpAndSettle();
+    expect(find.text('0/0'), findsOneWidget);
+  });
+
+  testWidgets('OR becomes optional when another keyword remains AND', (
     tester,
   ) async {
-    await tester.binding.setSurfaceSize(const Size(320, 640));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(const MyApp());
+    for (final keyword in ['timeout', 'database']) {
+      await tester.enterText(find.byKey(const Key('keyword_input')), keyword);
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+    }
+    expect(find.text('1/1'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('keyword_logic_database')));
+    await tester.pumpAndSettle();
+    expect(find.text('1/2'), findsOneWidget);
+  });
 
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('next_match')),
-      100,
-      scrollable: find
-          .descendant(
-            of: find.byKey(const Key('narrow_search_controls_scroll')),
-            matching: find.byType(Scrollable),
-          )
-          .first,
+  testWidgets('removing the final keyword restores All logs', (tester) async {
+    await tester.pumpWidget(const MyApp());
+    await tester.enterText(find.byKey(const Key('keyword_input')), 'timeout');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('search_mode_control')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Matches only').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('remove_timeout')));
+    await tester.pumpAndSettle();
+    expect(find.text('All logs'), findsOneWidget);
+    expect(find.text('0/0'), findsOneWidget);
+    expect(find.byKey(const Key('log_row_10_42_01')), findsOneWidget);
+  });
+
+  testWidgets('navigation buttons disable at the first and last match', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MyApp());
+    await tester.enterText(find.byKey(const Key('keyword_input')), 'timeout');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<IconButton>(find.byKey(const Key('previous_match')))
+          .onPressed,
+      isNull,
+    );
+    expect(
+      tester.widget<IconButton>(find.byKey(const Key('next_match'))).onPressed,
+      isNotNull,
     );
     await tester.tap(find.byKey(const Key('next_match')));
-    await tester.pump();
-
-    expect(find.text('3/15'), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<IconButton>(find.byKey(const Key('next_match'))).onPressed,
+      isNull,
+    );
   });
 
   testWidgets('keyword input stays readable on desktop and narrow screens', (

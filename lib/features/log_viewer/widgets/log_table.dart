@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:logger/features/log_viewer/models/dlt_filter.dart';
+import 'package:logger/features/log_viewer/models/log_search.dart';
 import 'package:logger/features/log_viewer/widgets/log_row.dart';
 import 'package:logger/models/log_entry.dart';
 import 'package:logger/ui/app_colors.dart';
@@ -11,12 +12,22 @@ class LogTable extends StatelessWidget {
   const LogTable({
     super.key,
     required this.entries,
+    required this.visibleEntryIndexes,
+    required this.matchRangesByEntryIndex,
+    required this.currentSearchEntryIndex,
+    required this.verticalController,
+    required this.rowKeys,
     required this.filters,
     required this.activeIndex,
     required this.onRowTap,
   });
 
   final List<LogEntry> entries;
+  final List<int> visibleEntryIndexes;
+  final Map<int, List<SearchRange>> matchRangesByEntryIndex;
+  final int? currentSearchEntryIndex;
+  final ScrollController verticalController;
+  final Map<int, GlobalKey> rowKeys;
   final List<DltFilter> filters;
   final int activeIndex;
   final ValueChanged<int> onRowTap;
@@ -50,15 +61,26 @@ class LogTable extends StatelessWidget {
                 _LogTableHeader(columns: columns, payloadWidth: payloadWidth),
                 Expanded(
                   child: ListView.builder(
+                    controller: verticalController,
                     padding: EdgeInsets.zero,
-                    itemCount: entries.length,
-                    itemBuilder: (context, index) => _LogTableRow(
-                      entry: entries[index],
-                      columns: columns,
-                      payloadWidth: payloadWidth,
-                      isActive: index == activeIndex,
-                      onTap: () => onRowTap(index),
-                    ),
+                    itemCount: visibleEntryIndexes.length,
+                    itemBuilder: (context, visibleIndex) {
+                      final sourceIndex = visibleEntryIndexes[visibleIndex];
+                      return KeyedSubtree(
+                        key: rowKeys[sourceIndex],
+                        child: _LogTableRow(
+                          entry: entries[sourceIndex],
+                          columns: columns,
+                          payloadWidth: payloadWidth,
+                          isActive: sourceIndex == activeIndex,
+                          isCurrentSearchMatch:
+                              sourceIndex == currentSearchEntryIndex,
+                          matchRanges:
+                              matchRangesByEntryIndex[sourceIndex] ?? const [],
+                          onTap: () => onRowTap(sourceIndex),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ],
@@ -113,6 +135,8 @@ class _LogTableRow extends StatelessWidget {
     required this.columns,
     required this.payloadWidth,
     required this.isActive,
+    required this.isCurrentSearchMatch,
+    required this.matchRanges,
     required this.onTap,
   });
 
@@ -120,12 +144,15 @@ class _LogTableRow extends StatelessWidget {
   final List<_LogColumn> columns;
   final double payloadWidth;
   final bool isActive;
+  final bool isCurrentSearchMatch;
+  final List<SearchRange> matchRanges;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) => LogRowShell(
     entry: entry,
     isActive: isActive,
+    isCurrentSearchMatch: isCurrentSearchMatch,
     onTap: onTap,
     padding: EdgeInsets.zero,
     child: Row(
@@ -135,7 +162,11 @@ class _LogTableRow extends StatelessWidget {
           _TableCell(
             width: column.isPayload ? payloadWidth : column.width,
             child: column.isPayload
-                ? LogPayloadCell(entry: entry)
+                ? LogPayloadCell(
+                    entry: entry,
+                    isCurrentSearchMatch: isCurrentSearchMatch,
+                    matchRanges: matchRanges,
+                  )
                 : Text(
                     column.fieldId == null
                         ? entry.time
