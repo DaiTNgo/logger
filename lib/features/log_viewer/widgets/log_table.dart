@@ -29,7 +29,7 @@ class LogTable extends StatelessWidget {
   final ScrollController verticalController;
   final Map<int, GlobalKey> rowKeys;
   final List<DltFilter> filters;
-  final int activeIndex;
+  final int? activeIndex;
   final ValueChanged<int> onRowTap;
 
   @override

@@ -25,7 +25,7 @@ class _LogViewerPageState extends State<LogViewerPage> {
   final _keywords = <SearchKeyword>[];
   final _keywordController = TextEditingController();
   final _logScrollController = ScrollController();
-  late final Map<int, GlobalKey> _rowKeys;
+  late Map<int, GlobalKey> _rowKeys;
   final _filters = <DltFilter>[
     const DltFilter(fieldId: 'ecu_id', values: ['ECU_MAIN']),
     const DltFilter(fieldId: 'apid', values: ['TELE']),
@@ -38,15 +38,56 @@ class _LogViewerPageState extends State<LogViewerPage> {
   var _displayMode = SearchDisplayMode.allLogs;
   var _scrollGeneration = 0;
   var _activeDestination = 0;
-  var _activeLogIndex = 5;
+  int? _activeLogIndex = 5;
 
   @override
   void initState() {
     super.initState();
-    _rowKeys = {
-      for (var index = 0; index < widget.entries.length; index++)
-        index: GlobalKey(),
-    };
+    _rowKeys = _createRowKeys(widget.entries.length);
+  }
+
+  @override
+  void didUpdateWidget(covariant LogViewerPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (identical(widget.entries, oldWidget.entries)) return;
+
+    final reconciliationGeneration = ++_scrollGeneration;
+    _rowKeys = _createRowKeys(widget.entries.length);
+    _matches = _searchEngine.search(widget.entries, _keywords);
+    _activeMatchIndex = _matches.isEmpty
+        ? 0
+        : _activeMatchIndex.clamp(0, _matches.length - 1);
+    _activeLogIndex = _reconcileActiveLogIndex(
+      oldEntries: oldWidget.entries,
+      newEntries: widget.entries,
+    );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || reconciliationGeneration != _scrollGeneration) return;
+      _scrollToActiveMatch();
+    });
+  }
+
+  Map<int, GlobalKey> _createRowKeys(int entryCount) => {
+    for (var index = 0; index < entryCount; index++) index: GlobalKey(),
+  };
+
+  int? _reconcileActiveLogIndex({
+    required List<LogEntry> oldEntries,
+    required List<LogEntry> newEntries,
+  }) {
+    if (newEntries.isEmpty) return null;
+
+    final oldIndex = _activeLogIndex;
+    if (oldIndex != null && oldIndex >= 0 && oldIndex < oldEntries.length) {
+      final selectedEntry = oldEntries[oldIndex];
+      final identityIndex = newEntries.indexWhere(
+        (entry) => identical(entry, selectedEntry),
+      );
+      if (identityIndex != -1) return identityIndex;
+    }
+
+    return (oldIndex ?? 0).clamp(0, newEntries.length - 1);
   }
 
   @override
