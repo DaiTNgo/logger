@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:logger/data/sample_logs.dart';
 import 'package:logger/main.dart';
 
 Future<void> openFilterMenu(WidgetTester tester) async {
@@ -16,6 +17,28 @@ Future<void> openFilterMenu(WidgetTester tester) async {
 }
 
 void main() {
+  test('sample logs provide every supported DLT field', () {
+    const fieldIds = [
+      'ecu_id',
+      'apid',
+      'ctid',
+      'message_type',
+      'log_level',
+      'trace_type',
+      'network_type',
+      'header_type',
+      'verbose_mode',
+      'message_counter',
+      'length',
+      'number_of_arguments',
+      'session_id',
+      'time_range',
+    ];
+    for (final fieldId in fieldIds) {
+      expect(sampleLogs.first.dltValues[fieldId], isNotEmpty);
+    }
+  });
+
   testWidgets('renders the LogViewer reference content', (tester) async {
     final semantics = tester.ensureSemantics();
     await tester.pumpWidget(const MyApp());
