@@ -1,0 +1,315 @@
+<!DOCTYPE html><html lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Log Viewer</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;600&amp;family=IBM+Plex+Mono:wght@400;600&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-fixed": "#001d6c",
+                    "inverse-primary": "#78a9ff",
+                    "surface": "#ffffff",
+                    "on-primary-container": "#161616",
+                    "inverse-on-surface": "#f4f4f4",
+                    "on-secondary-fixed": "#161616",
+                    "tertiary-fixed": "#a7f0ba",
+                    "secondary-fixed": "#e0e0e0",
+                    "surface-variant": "#f4f4f4",
+                    "secondary-fixed-dim": "#c6c6c6",
+                    "on-error": "#ffffff",
+                    "surface-dim": "#e0e0e0",
+                    "tertiary-fixed-dim": "#42be65",
+                    "background": "#ffffff",
+                    "primary-fixed-dim": "#78a9ff",
+                    "outline": "#8d8d8d",
+                    "error-container": "#fff1f1",
+                    "outline-variant": "#e0e0e0",
+                    "surface-bright": "#ffffff",
+                    "primary": "#0f62fe",
+                    "surface-tint": "#0f62fe",
+                    "secondary-container": "#e0e0e0",
+                    "inverse-surface": "#393939",
+                    "on-secondary-fixed-variant": "#525252",
+                    "primary-container": "#d0e2ff",
+                    "primary-fixed": "#d0e2ff",
+                    "on-primary": "#ffffff",
+                    "on-tertiary-fixed-variant": "#044317",
+                    "tertiary": "#198038",
+                    "on-tertiary-fixed": "#022d0d",
+                    "on-surface-variant": "#525252",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container-highest": "#c6c6c6",
+                    "error": "#da1e28",
+                    "surface-container": "#f4f4f4",
+                    "on-tertiary": "#ffffff",
+                    "on-secondary": "#ffffff",
+                    "surface-container-high": "#e0e0e0",
+                    "on-background": "#161616",
+                    "on-secondary-container": "#525252",
+                    "on-primary-fixed-variant": "#0043ce",
+                    "on-tertiary-container": "#044317",
+                    "on-surface": "#161616",
+                    "on-error-container": "#750e13",
+                    "tertiary-container": "#a7f0ba",
+                    "surface-container-low": "#f4f4f4",
+                    "secondary": "#6f6f6f",
+                    "warning": "#f1c21b",
+                    "warning-bg": "#fcf4d6"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0",
+                    "lg": "0",
+                    "xl": "0",
+                    "full": "0"
+            },
+            "spacing": {
+                '0.5': '0.125rem',
+                '1': '0.25rem',
+                '2': '0.5rem',
+                '3': '0.75rem',
+                '4': '1rem',
+                '5': '1.25rem',
+                '6': '1.5rem',
+                '8': '2rem',
+                '10': '2.5rem',
+            },
+            "fontFamily": {
+                    "headline": ["IBM Plex Sans", "sans-serif"],
+                    "display": ["IBM Plex Sans", "sans-serif"],
+                    "body": ["IBM Plex Sans", "sans-serif"],
+                    "label": ["IBM Plex Sans", "sans-serif"],
+                    "mono": ["IBM Plex Mono", "monospace"]
+            },
+            "fontSize": {
+                'xs': ['12px', '16px'],
+                'sm': ['14px', '20px'],
+                'base': ['16px', '24px'],
+                'lg': ['20px', '28px'],
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'IBM Plex Sans', sans-serif; }
+        .log-mono { font-family: 'IBM Plex Mono', monospace; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .highlight { background-color: #d0e2ff; color: #001d6c; font-weight: 600; padding: 0 2px;}
+    </style>
+</head>
+<body class="bg-background text-on-background h-screen flex flex-col overflow-hidden antialiased">
+<!-- TopAppBar -->
+<header class="docked full-width top-0 border-b border-outline-variant bg-surface flex justify-between items-center w-full px-4 h-12 flex-shrink-0 z-20 shadow-sm">
+<div class="flex items-center gap-3">
+<button class="text-on-surface-variant hover:bg-surface-variant p-1 transition-colors duration-150 ease-in-out flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+<h1 class="font-headline text-[20px] font-semibold text-primary">LogViewer</h1>
+</div>
+<button class="text-on-surface-variant hover:bg-surface-variant p-1 transition-colors duration-150 ease-in-out flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+</button>
+</header>
+<!-- Search / Filter Area -->
+<div class="bg-surface-container flex-shrink-0 z-10 border-b border-outline-variant pb-2">
+<!-- Search Bar -->
+<div class="px-4 pt-3 pb-2">
+<div class="flex items-center bg-surface border-b border-outline h-10 w-full relative">
+<span class="material-symbols-outlined text-outline ml-3 mr-2" data-icon="search">search</span>
+<div class="flex-1 flex items-center overflow-x-auto hide-scrollbar h-full px-1 gap-1"><div class="flex items-center bg-primary-container/20 border border-primary h-7 flex-shrink-0 overflow-hidden"><button class="flex items-center gap-0.5 px-1.5 h-full bg-primary-container/40 hover:bg-primary-container/60 transition-colors border-r border-primary/30 group" title="Toggle Logic (AND/OR)"><span class="text-[10px] font-bold text-primary">AND</span><span class="material-symbols-outlined text-[12px] text-primary">expand_more</span></button><div class="flex items-center px-2 py-0.5 gap-1"><span class="text-xs font-mono text-primary font-semibold">timeout</span><button class="flex items-center justify-center hover:bg-primary-container/40 transition-colors"><span class="material-symbols-outlined text-[14px] text-primary">close</span></button></div></div><div class="flex items-center bg-primary-container/20 border border-primary h-7 flex-shrink-0 overflow-hidden"><button class="flex items-center gap-0.5 px-1.5 h-full bg-primary-container/40 hover:bg-primary-container/60 transition-colors border-r border-primary/30 group" title="Toggle Logic (AND/OR)"><span class="text-[10px] font-bold text-primary">AND</span><span class="material-symbols-outlined text-[12px] text-primary">expand_more</span></button><div class="flex items-center px-2 py-0.5 gap-1"><span class="text-xs font-mono text-primary font-semibold">error</span><button class="flex items-center justify-center hover:bg-primary-container/40 transition-colors"><span class="material-symbols-outlined text-[14px] text-primary">close</span></button></div></div><div class="flex items-center bg-primary-container/20 border border-primary h-7 flex-shrink-0 overflow-hidden"><button class="flex items-center gap-0.5 px-1.5 h-full bg-primary-container/40 hover:bg-primary-container/60 transition-colors border-r border-primary/30 group" title="Toggle Logic (AND/OR)"><span class="text-[10px] font-bold text-primary">AND</span><span class="material-symbols-outlined text-[12px] text-primary">expand_more</span></button><div class="flex items-center px-2 py-0.5 gap-1"><span class="text-xs font-mono text-primary font-semibold">connection</span><button class="flex items-center justify-center hover:bg-primary-container/40 transition-colors"><span class="material-symbols-outlined text-[14px] text-primary">close</span></button></div></div><div class="flex items-center bg-primary-container/20 border border-primary h-7 flex-shrink-0 overflow-hidden"><button class="flex items-center gap-0.5 px-1.5 h-full bg-primary-container/40 hover:bg-primary-container/60 transition-colors border-r border-primary/30 group" title="Toggle Logic (AND/OR)"><span class="text-[10px] font-bold text-primary">AND</span><span class="material-symbols-outlined text-[12px] text-primary">expand_more</span></button><div class="flex items-center px-2 py-0.5 gap-1"><span class="text-xs font-mono text-primary font-semibold">retry</span><button class="flex items-center justify-center hover:bg-primary-container/40 transition-colors"><span class="material-symbols-outlined text-[14px] text-primary">close</span></button></div></div><div class="flex items-center bg-primary-container/20 border border-primary h-7 flex-shrink-0 overflow-hidden"><button class="flex items-center gap-0.5 px-1.5 h-full bg-primary-container/40 hover:bg-primary-container/60 transition-colors border-r border-primary/30 group" title="Toggle Logic (AND/OR)"><span class="text-[10px] font-bold text-primary">AND</span><span class="material-symbols-outlined text-[12px] text-primary">expand_more</span></button><div class="flex items-center px-2 py-0.5 gap-1"><span class="text-xs font-mono text-primary font-semibold">database</span><button class="flex items-center justify-center hover:bg-primary-container/40 transition-colors"><span class="material-symbols-outlined text-[14px] text-primary">close</span></button></div></div><input class="flex-1 bg-transparent border-none focus:ring-0 text-sm font-body px-0 py-0 h-full placeholder:text-outline text-on-surface min-w-[100px]" placeholder="Add keyword..." type="text"></div>
+<div class="flex items-center mr-2 border-l border-outline-variant pl-2 ml-2"><button class="p-1 text-primary hover:bg-primary-container/20 transition-colors flex items-center justify-center mr-1" title="Advanced Filters"><span class="material-symbols-outlined text-[18px]">tune</span></button><button class="p-1 text-on-surface-variant hover:bg-surface-variant transition-colors flex items-center justify-center mr-1" title="Match Case">
+<span class="material-symbols-outlined text-[18px]" data-icon="match_case">match_case</span>
+</button>
+<button class="p-1 text-on-surface-variant hover:bg-surface-variant transition-colors flex items-center justify-center mr-2" title="Search Mode">
+<span class="material-symbols-outlined text-[18px]" data-icon="subject">subject</span>
+</button>
+<span class="bg-primary text-on-primary text-[10px] font-bold px-1.5 py-0.5 mr-2 flex-shrink-0">5 KEYWORDS</span><span class="text-xs text-outline mr-2 font-mono">2/15</span>
+<button class="p-1 text-on-surface-variant hover:bg-surface-variant transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]" data-icon="keyboard_arrow_up">keyboard_arrow_up</span>
+</button>
+<button class="p-1 text-on-surface-variant hover:bg-surface-variant transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]" data-icon="keyboard_arrow_down">keyboard_arrow_down</span>
+</button>
+<button class="p-1 text-on-surface-variant hover:bg-surface-variant transition-colors flex items-center justify-center ml-1">
+<span class="material-symbols-outlined text-[18px]" data-icon="close">close</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Filter Chips -->
+</div>
+<!-- Main Content: Log List -->
+<div class="bg-surface-container-low border-b border-outline-variant px-4 py-2 flex items-center gap-3 overflow-x-auto hide-scrollbar"><!-- ECU ID Filter Tag -->
+<div class="inline-flex items-center border border-outline-variant bg-surface overflow-hidden flex-shrink-0">
+<span class="px-2 py-1 text-[12px] font-semibold text-on-surface border-r border-outline-variant bg-surface-container-low">ECU ID</span>
+<span class="px-1.5 py-1 text-[12px] text-secondary border-r border-outline-variant">is</span>
+<div class="flex items-center px-2 py-1 gap-1.5">
+<span class="text-[12px] text-on-surface">ECU_MAIN</span>
+<button class="flex items-center text-secondary hover:text-on-surface">
+<span class="material-symbols-outlined text-[14px]">close</span>
+</button>
+</div>
+</div>
+<!-- APID Filter Tag -->
+<div class="inline-flex items-center border border-outline-variant bg-surface overflow-hidden flex-shrink-0">
+<span class="px-2 py-1 text-[12px] font-semibold text-on-surface border-r border-outline-variant bg-surface-container-low">APID</span>
+<span class="px-1.5 py-1 text-[12px] text-secondary border-r border-outline-variant">is</span>
+<div class="flex items-center px-2 py-1 gap-1.5">
+<span class="text-[12px] text-on-surface">TELE</span>
+<button class="flex items-center text-secondary hover:text-on-surface">
+<span class="material-symbols-outlined text-[14px]">close</span>
+</button>
+</div>
+</div>
+<!-- CTID Filter Tag -->
+<div class="inline-flex items-center border border-outline-variant bg-surface overflow-hidden flex-shrink-0">
+<span class="px-2 py-1 text-[12px] font-semibold text-on-surface border-r border-outline-variant bg-surface-container-low">CTID</span>
+<span class="px-1.5 py-1 text-[12px] text-secondary border-r border-outline-variant">is</span>
+<div class="flex items-center px-2 py-1 gap-1.5">
+<span class="text-[12px] text-on-surface">NetworkComm</span>
+<button class="flex items-center text-secondary hover:text-on-surface">
+<span class="material-symbols-outlined text-[14px]">close</span>
+</button>
+</div>
+</div>
+<!-- Log Level Filter Tag -->
+<div class="inline-flex items-center border border-outline-variant bg-surface overflow-hidden flex-shrink-0">
+<span class="px-2 py-1 text-[12px] font-semibold text-on-surface border-r border-outline-variant bg-surface-container-low">Log Level</span>
+<span class="px-1.5 py-1 text-[12px] text-secondary border-r border-outline-variant">is</span>
+<div class="flex items-center px-2 py-1 gap-1.5">
+<span class="text-[12px] text-on-surface">Error, Fatal</span>
+<button class="flex items-center text-secondary hover:text-on-surface">
+<span class="material-symbols-outlined text-[14px]">close</span>
+</button>
+</div>
+</div>
+<!-- Message Type Filter Tag -->
+<div class="inline-flex items-center border border-outline-variant bg-surface overflow-hidden flex-shrink-0">
+<span class="px-2 py-1 text-[12px] font-semibold text-on-surface border-r border-outline-variant bg-surface-container-low">Msg Type</span>
+<span class="px-1.5 py-1 text-[12px] text-secondary border-r border-outline-variant">is</span>
+<div class="flex items-center px-2 py-1 gap-1.5">
+<span class="text-[12px] text-on-surface">Log</span>
+<button class="flex items-center text-secondary hover:text-on-surface">
+<span class="material-symbols-outlined text-[14px]">close</span>
+</button>
+</div>
+</div>
+<!-- Add Filter Button -->
+<button class="inline-flex items-center px-3 py-1 border border-outline-variant bg-surface text-[12px] font-medium text-on-surface hover:bg-surface-variant transition-colors flex-shrink-0">
+    Add filter
+  </button>
+<!-- Clear All -->
+<button class="text-[12px] text-secondary hover:text-primary transition-colors ml-1 flex-shrink-0">Clear all</button></div><main class="flex-1 overflow-y-auto bg-surface pb-16">
+<div class="log-mono text-xs w-full">
+<!-- Info Log -->
+<div class="flex border-b border-surface-container-high py-2 px-3 hover:bg-surface-variant transition-colors">
+<div class="w-16 flex-shrink-0 text-secondary mr-3 text-right">10:42:01</div>
+<div class="w-10 flex-shrink-0 mr-3 text-tertiary font-semibold uppercase">INFO</div>
+<div class="flex-1 text-on-surface break-all">
+                    System initialization complete. Module <span class="text-secondary">[core]</span> started successfully in 142ms.
+                </div>
+</div>
+<!-- Info Log -->
+<div class="flex border-b border-surface-container-high py-2 px-3 hover:bg-surface-variant transition-colors">
+<div class="w-16 flex-shrink-0 text-secondary mr-3 text-right">10:42:05</div>
+<div class="w-10 flex-shrink-0 mr-3 text-tertiary font-semibold uppercase">INFO</div>
+<div class="flex-1 text-on-surface break-all">
+                    Network listener bound to 0.0.0.0:8080. Awaiting connections.
+                </div>
+</div>
+<!-- Warning Log -->
+<div class="flex border-b border-warning-bg bg-warning-bg/30 py-2 px-3 hover:bg-warning-bg/50 transition-colors">
+<div class="w-16 flex-shrink-0 text-secondary mr-3 text-right">10:45:12</div>
+<div class="w-10 flex-shrink-0 mr-3 text-warning font-semibold uppercase">WARN</div>
+<div class="flex-1 text-on-surface break-all">
+                    High memory usage detected in worker pool. Current utilization: 85%. Consider scaling.
+                </div>
+</div>
+<!-- Error Log with Highlight -->
+<div class="flex border-b border-error-container bg-error-container/30 py-2 px-3 hover:bg-error-container/50 transition-colors">
+<div class="w-16 flex-shrink-0 text-secondary mr-3 text-right">10:48:33</div>
+<div class="w-10 flex-shrink-0 mr-3 text-error font-semibold uppercase">ERR</div>
+<div class="flex-1 text-on-surface break-all">Connection <span class="bg-primary-container/40 border border-primary/30 px-1 rounded-sm font-semibold">timeout</span> while attempting to reach database replica at 192.168.1.5:5432. Retrying in 5s...</div>
+</div>
+<!-- Info Log -->
+<div class="flex border-b border-surface-container-high py-2 px-3 hover:bg-surface-variant transition-colors">
+<div class="w-16 flex-shrink-0 text-secondary mr-3 text-right">10:48:38</div>
+<div class="w-10 flex-shrink-0 mr-3 text-tertiary font-semibold uppercase">INFO</div>
+<div class="flex-1 text-on-surface break-all">
+                    Retry 1/3: Attempting connection to secondary replica.
+                </div>
+</div>
+<!-- Error Log with Highlight (Active) -->
+<div class="flex border-b border-primary bg-primary-container/20 py-2 px-3 transition-colors relative">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+<div class="w-16 flex-shrink-0 text-secondary mr-3 text-right">10:48:43</div>
+<div class="w-10 flex-shrink-0 mr-3 text-error font-semibold uppercase">ERR</div>
+<div class="flex-1 text-on-surface break-all">
+                    Failed to resolve host 'db-replica-sec.internal'. DNS query <span class="bg-primary text-on-primary px-1 rounded-sm font-semibold">timeout</span> after 5000ms.
+                </div>
+</div>
+<!-- Info Log -->
+<div class="flex border-b border-surface-container-high py-2 px-3 hover:bg-surface-variant transition-colors">
+<div class="w-16 flex-shrink-0 text-secondary mr-3 text-right">10:49:01</div>
+<div class="w-10 flex-shrink-0 mr-3 text-tertiary font-semibold uppercase">INFO</div>
+<div class="flex-1 text-on-surface break-all">
+                    User session terminated gracefully. [UID: 9482-A]
+                </div>
+</div>
+<!-- Info Log -->
+<div class="flex border-b border-surface-container-high py-2 px-3 hover:bg-surface-variant transition-colors">
+<div class="w-16 flex-shrink-0 text-secondary mr-3 text-right">10:50:15</div>
+<div class="w-10 flex-shrink-0 mr-3 text-tertiary font-semibold uppercase">INFO</div>
+<div class="flex-1 text-on-surface break-all">
+                    Scheduled task 'LogRotation' completed. 4 files compressed.
+                </div>
+</div>
+<!-- Warning Log -->
+<div class="flex border-b border-warning-bg bg-warning-bg/30 py-2 px-3 hover:bg-warning-bg/50 transition-colors">
+<div class="w-16 flex-shrink-0 text-secondary mr-3 text-right">10:52:05</div>
+<div class="w-10 flex-shrink-0 mr-3 text-warning font-semibold uppercase">WARN</div>
+<div class="flex-1 text-on-surface break-all">
+                    Deprecation warning: API endpoint /v1/users/list will be removed in next release.
+                </div>
+</div>
+<!-- Info Log -->
+<div class="flex border-b border-surface-container-high py-2 px-3 hover:bg-surface-variant transition-colors">
+<div class="w-16 flex-shrink-0 text-secondary mr-3 text-right">10:55:00</div>
+<div class="w-10 flex-shrink-0 mr-3 text-tertiary font-semibold uppercase">INFO</div>
+<div class="flex-1 text-on-surface break-all">
+                    Heartbeat sent to orchestrator. Status: HEALTHY.
+                </div>
+</div>
+<!-- Padding for bottom nav -->
+<div class="h-8"></div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center h-16 bg-surface border-t border-outline-variant flat no shadows md:hidden">
+<button class="flex flex-col items-center justify-center text-primary font-semibold hover:bg-surface-container-low transition-transform scale-95 active:scale-90 w-full h-full">
+<span class="material-symbols-outlined mb-1" data-icon="explore">explore</span>
+<span class="font-label text-[12px] font-medium text-on-surface">Explorer</span>
+</button>
+<button class="flex flex-col items-center justify-center text-secondary hover:bg-surface-container-low transition-transform scale-95 active:scale-90 w-full h-full">
+<span class="material-symbols-outlined mb-1" data-icon="find_in_page">find_in_page</span>
+<span class="font-label text-[12px] font-medium text-on-surface">Search</span>
+</button>
+<button class="flex flex-col items-center justify-center text-secondary hover:bg-surface-container-low transition-transform scale-95 active:scale-90 w-full h-full">
+<span class="material-symbols-outlined mb-1" data-icon="filter_list">filter_list</span>
+<span class="font-label text-[12px] font-medium text-on-surface">Filters</span>
+</button>
+<button class="flex flex-col items-center justify-center text-secondary hover:bg-surface-container-low transition-transform scale-95 active:scale-90 w-full h-full">
+<span class="material-symbols-outlined mb-1" data-icon="settings">settings</span>
+<span class="font-label text-[12px] font-medium text-on-surface">Settings</span>
+</button>
+</nav>
+
+
+</body></html>
