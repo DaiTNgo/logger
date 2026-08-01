@@ -539,9 +539,7 @@ void main() {
     );
   });
 
-  testWidgets('an invalid nested time range does not update the filter', (
-    tester,
-  ) async {
+  testWidgets('invalid end retains the start-only filter', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1600, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final selectedDate = DateUtils.dateOnly(DateTime.now());
@@ -581,7 +579,7 @@ void main() {
     await tester.tapAt(const Offset(10, 500));
     await tester.pumpAndSettle();
 
-    expect(find.text('Select...'), findsOneWidget);
+    expect(find.text('${formatDate(selectedDate)} 11:00 –'), findsOneWidget);
   });
 
   testWidgets('a valid typed start date applies only after blur', (
@@ -608,6 +606,29 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Select...'), findsOneWidget);
     expect(find.text('2026-02-30'), findsOneWidget);
+  });
+
+  testWidgets('typing a date preserves the selected start time', (
+    tester,
+  ) async {
+    await openTimeRangeFilter(tester);
+    await selectTimeOption(
+      tester,
+      const Key('time_range_start_hour'),
+      const Key('time_range_start_hour_options'),
+      const Key('time_range_start_hour_option_10'),
+    );
+    await selectTimeOption(
+      tester,
+      const Key('time_range_start_minute'),
+      const Key('time_range_start_minute_options'),
+      const Key('time_range_start_minute_option_30'),
+    );
+    final input = find.byKey(const Key('time_range_start_input'));
+    await tester.enterText(input, '2026-08-02');
+    await tester.tap(find.byKey(const Key('time_range_end_input')));
+    await tester.pumpAndSettle();
+    expect(find.text('2026-08-02 10:30 –'), findsOneWidget);
   });
 
   testWidgets('start calendar opens in a popover', (tester) async {
