@@ -84,6 +84,50 @@ void main() {
     expect(find.byKey(const Key('dlt_column_header_Trace Type')), findsNothing);
   });
 
+  testWidgets('adding and removing a filter shows and hides its column', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1600, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(const MyApp());
+
+    await openFilterMenu(tester);
+    await tester.tap(find.byKey(const Key('add_filter_trace_type')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('dlt_column_header_Trace Type')),
+      findsOneWidget,
+    );
+
+    final filterScroll = find
+        .descendant(
+          of: find.byKey(const Key('filter_strip')),
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    final removeButton = find.byKey(const Key('remove_filter_trace_type'));
+    await tester.dragUntilVisible(
+      removeButton,
+      filterScroll,
+      const Offset(-200, 0),
+    );
+    await tester.tap(removeButton);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('dlt_column_header_Trace Type')), findsNothing);
+  });
+
+  testWidgets('clearing filters retains Time and Payload columns', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MyApp());
+    await tester.tap(find.text('Clear all'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('dlt_column_header_Time')), findsOneWidget);
+    expect(find.byKey(const Key('dlt_column_header_Payload')), findsOneWidget);
+    expect(find.byKey(const Key('dlt_column_header_ECU ID')), findsNothing);
+  });
+
   testWidgets('renders every supplied log message and initial filter value', (
     tester,
   ) async {
