@@ -9,9 +9,12 @@ import 'package:logger/features/log_viewer/widgets/filter_strip.dart';
 import 'package:logger/features/log_viewer/widgets/log_table.dart';
 import 'package:logger/features/log_viewer/widgets/log_viewer_header.dart';
 import 'package:logger/features/log_viewer/widgets/search_panel.dart';
+import 'package:logger/models/log_entry.dart';
 
 class LogViewerPage extends StatefulWidget {
-  const LogViewerPage({super.key});
+  const LogViewerPage({super.key, this.entries = sampleLogs});
+
+  final List<LogEntry> entries;
 
   @override
   State<LogViewerPage> createState() => _LogViewerPageState();
@@ -22,9 +25,7 @@ class _LogViewerPageState extends State<LogViewerPage> {
   final _keywords = <SearchKeyword>[];
   final _keywordController = TextEditingController();
   final _logScrollController = ScrollController();
-  final _rowKeys = <int, GlobalKey>{
-    for (var index = 0; index < sampleLogs.length; index++) index: GlobalKey(),
-  };
+  late final Map<int, GlobalKey> _rowKeys;
   final _filters = <DltFilter>[
     const DltFilter(fieldId: 'ecu_id', values: ['ECU_MAIN']),
     const DltFilter(fieldId: 'apid', values: ['TELE']),
@@ -40,6 +41,15 @@ class _LogViewerPageState extends State<LogViewerPage> {
   var _activeLogIndex = 5;
 
   @override
+  void initState() {
+    super.initState();
+    _rowKeys = {
+      for (var index = 0; index < widget.entries.length; index++)
+        index: GlobalKey(),
+    };
+  }
+
+  @override
   void dispose() {
     _keywordController.dispose();
     _logScrollController.dispose();
@@ -49,7 +59,7 @@ class _LogViewerPageState extends State<LogViewerPage> {
   void _mutateSearch(VoidCallback mutation) {
     setState(() {
       mutation();
-      _matches = _searchEngine.search(sampleLogs, _keywords);
+      _matches = _searchEngine.search(widget.entries, _keywords);
       _activeMatchIndex = 0;
       if (_keywords.isEmpty) {
         _displayMode = SearchDisplayMode.allLogs;
@@ -106,26 +116,26 @@ class _LogViewerPageState extends State<LogViewerPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!_isCurrentScroll(generation, sourceIndex)) return;
       var rowContext = _rowKeys[sourceIndex]?.currentContext;
-      final needsPreciseScroll =
-          rowContext == null || !_isRowVisible(rowContext);
       if (rowContext == null && _logScrollController.hasClients) {
         final visibleIndexes = _displayMode == SearchDisplayMode.matchesOnly
             ? _matches.map((match) => match.entryIndex).toList(growable: false)
-            : List<int>.generate(sampleLogs.length, (index) => index);
+            : List<int>.generate(
+                widget.entries.length,
+                (index) => index,
+                growable: false,
+              );
         final visibleIndex = visibleIndexes.indexOf(sourceIndex);
         if (visibleIndex == -1) return;
-        final fraction = visibleIndexes.length <= 1
-            ? 0.0
-            : visibleIndex / (visibleIndexes.length - 1);
-        await _logScrollController.animateTo(
-          _logScrollController.position.maxScrollExtent * fraction,
-          duration: const Duration(milliseconds: 150),
-          curve: Curves.easeOut,
+        rowContext = await _seekToBuiltRow(
+          generation: generation,
+          sourceIndex: sourceIndex,
+          targetVisibleIndex: visibleIndex,
+          visibleIndexes: visibleIndexes,
         );
-        if (!_isCurrentScroll(generation, sourceIndex)) return;
-        rowContext = _rowKeys[sourceIndex]?.currentContext;
       }
-      if (rowContext != null && rowContext.mounted && needsPreciseScroll) {
+      if (rowContext != null &&
+          rowContext.mounted &&
+          !_isRowVisible(rowContext)) {
         final targetOffset = _verticalOffsetForRow(rowContext, 0.5);
         if (targetOffset == null ||
             !_isCurrentScroll(generation, sourceIndex)) {
@@ -139,6 +149,62 @@ class _LogViewerPageState extends State<LogViewerPage> {
         if (!_isCurrentScroll(generation, sourceIndex)) return;
       }
     });
+  }
+
+  Future<BuildContext?> _seekToBuiltRow({
+    required int generation,
+    required int sourceIndex,
+    required int targetVisibleIndex,
+    required List<int> visibleIndexes,
+  }) async {
+    double? lowerOffset;
+    double? upperOffset;
+    const maxIterations = 40;
+    const offsetTolerance = 0.5;
+
+    for (var iteration = 0; iteration < maxIterations; iteration++) {
+      if (!_isCurrentScroll(generation, sourceIndex) ||
+          !_logScrollController.hasClients) {
+        return null;
+      }
+      final rowContext = _rowKeys[sourceIndex]?.currentContext;
+      if (rowContext != null && rowContext.mounted) return rowContext;
+
+      final builtVisibleIndexes = <int>[
+        for (var index = 0; index < visibleIndexes.length; index++)
+          if (_rowKeys[visibleIndexes[index]]?.currentContext
+              case final context? when context.mounted)
+            index,
+      ];
+      if (builtVisibleIndexes.isEmpty) return null;
+
+      final position = _logScrollController.position;
+      final currentOffset = position.pixels;
+      double nextOffset;
+      if (targetVisibleIndex < builtVisibleIndexes.first) {
+        upperOffset = currentOffset;
+        nextOffset = lowerOffset == null
+            ? position.minScrollExtent
+            : (lowerOffset + upperOffset) / 2;
+      } else if (targetVisibleIndex > builtVisibleIndexes.last) {
+        lowerOffset = currentOffset;
+        if (upperOffset == null) {
+          nextOffset = position.maxScrollExtent;
+        } else {
+          nextOffset = (lowerOffset + upperOffset) / 2;
+        }
+      } else {
+        return null;
+      }
+
+      nextOffset = nextOffset
+          .clamp(position.minScrollExtent, position.maxScrollExtent)
+          .toDouble();
+      if ((nextOffset - currentOffset).abs() <= offsetTolerance) return null;
+      _logScrollController.jumpTo(nextOffset);
+      await WidgetsBinding.instance.endOfFrame;
+    }
+    return null;
   }
 
   bool _isCurrentScroll(int generation, int sourceIndex) =>
@@ -202,7 +268,7 @@ class _LogViewerPageState extends State<LogViewerPage> {
     };
     final visibleEntryIndexes = _displayMode == SearchDisplayMode.matchesOnly
         ? _matches.map((match) => match.entryIndex).toList(growable: false)
-        : List<int>.generate(sampleLogs.length, (index) => index);
+        : List<int>.generate(widget.entries.length, (index) => index);
     final currentSearchEntryIndex = _matches.isEmpty
         ? null
         : _matches[_activeMatchIndex].entryIndex;
@@ -251,7 +317,7 @@ class _LogViewerPageState extends State<LogViewerPage> {
                       ),
                     )
                   : LogTable(
-                      entries: sampleLogs,
+                      entries: widget.entries,
                       visibleEntryIndexes: visibleEntryIndexes,
                       matchRangesByEntryIndex: matchRangesByEntryIndex,
                       currentSearchEntryIndex: currentSearchEntryIndex,

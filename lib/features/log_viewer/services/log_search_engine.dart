@@ -42,8 +42,9 @@ class LogSearchEngine {
       caseSensitive: keyword.caseSensitive,
     );
     return [
-      for (final match in expression.allMatches(payload))
-        SearchRange(match.start, match.end),
+      for (var start = 0; start < payload.length; start++)
+        if (expression.matchAsPrefix(payload, start) case final match?)
+          SearchRange(start, match.end),
     ];
   }
 

@@ -37,6 +37,47 @@ void main() {
     expect(highlighted.map((span) => span.text), ['timeout', 'retry']);
   });
 
+  testWidgets('highlighted payload inherits the plain payload text scaler', (
+    tester,
+  ) async {
+    const textScaler = TextScaler.linear(1.75);
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: MediaQuery(
+          data: MediaQueryData(textScaler: textScaler),
+          child: Scaffold(
+            body: Column(
+              children: [
+                KeyedSubtree(
+                  key: Key('plain_payload'),
+                  child: LogPayloadCell(entry: entry),
+                ),
+                KeyedSubtree(
+                  key: Key('highlighted_payload'),
+                  child: LogPayloadCell(
+                    entry: entry,
+                    matchRanges: [SearchRange(0, 7)],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    RichText renderedTextWithin(Key key) => tester.widget<RichText>(
+      find.descendant(of: find.byKey(key), matching: find.byType(RichText)),
+    );
+
+    final plainText = renderedTextWithin(const Key('plain_payload'));
+    final highlightedText = renderedTextWithin(
+      const Key('highlighted_payload'),
+    );
+    expect(plainText.textScaler, textScaler);
+    expect(highlightedText.textScaler, plainText.textScaler);
+  });
+
   testWidgets('keeps manual selection separate from current search match', (
     tester,
   ) async {

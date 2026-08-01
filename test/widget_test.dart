@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logger/data/sample_logs.dart';
 import 'package:logger/features/log_viewer/models/dlt_filter.dart';
+import 'package:logger/features/log_viewer/log_viewer_page.dart';
 import 'package:logger/features/log_viewer/widgets/filter_strip.dart';
 import 'package:logger/features/log_viewer/widgets/log_table.dart';
 import 'package:logger/main.dart';
+import 'package:logger/models/log_entry.dart';
 
 Future<void> openFilterMenu(WidgetTester tester) async {
   final button = find.byKey(const Key('add_filter_button'));
@@ -833,6 +835,49 @@ void main() {
         find.byKey(const Key('current_search_match_row_10_48_43')),
         findsOneWidget,
       );
+    },
+  );
+
+  testWidgets(
+    'variable-height search navigation reveals the distant active row',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(900, 500));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final entries = List<LogEntry>.generate(30, (index) {
+        final isTall = index > 0 && index < 12;
+        final marker = index == 0 || index == 20 ? ' needle' : '';
+        return LogEntry(
+          time: '12:00:${index.toString().padLeft(2, '0')}',
+          level: LogLevel.info,
+          message:
+              '${isTall ? List.filled(90, 'uneven payload ').join() : 'row'}$marker',
+        );
+      });
+      await tester.pumpWidget(
+        MaterialApp(home: LogViewerPage(entries: entries)),
+      );
+      await tester.enterText(find.byKey(const Key('keyword_input')), 'needle');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('next_match')));
+      await tester.pumpAndSettle();
+
+      final activeRow = find.byKey(
+        const Key('current_search_match_row_12_00_20'),
+      );
+      final verticalScrollable = tester
+          .stateList<ScrollableState>(
+            find.descendant(
+              of: find.byType(LogTable),
+              matching: find.byType(Scrollable),
+            ),
+          )
+          .singleWhere((state) => state.position.axis == Axis.vertical);
+      final viewport = tester.getRect(find.byWidget(verticalScrollable.widget));
+      final rowBounds = tester.getRect(activeRow);
+      expect(rowBounds.top, greaterThanOrEqualTo(viewport.top));
+      expect(rowBounds.bottom, lessThanOrEqualTo(viewport.bottom));
     },
   );
 

@@ -212,6 +212,7 @@ class _LogMessage extends StatelessWidget {
     }
     return RichText(
       key: Key('payload_search_highlights_${entry.time.replaceAll(':', '_')}'),
+      textScaler: MediaQuery.textScalerOf(context),
       text: TextSpan(style: baseStyle, children: spans),
     );
   }

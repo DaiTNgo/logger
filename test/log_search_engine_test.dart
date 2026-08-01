@@ -67,6 +67,15 @@ void main() {
     ]);
   });
 
+  test('merges overlapping occurrences of one keyword', () {
+    final matches = engine.search(
+      const [LogEntry(time: '1', level: LogLevel.info, message: 'aaa')],
+      const [SearchKeyword(text: 'aa')],
+    );
+
+    expect(matches.single.ranges, const [SearchRange(0, 3)]);
+  });
+
   test('merges overlapping and adjacent keyword ranges', () {
     final matches = engine.search(
       const [LogEntry(time: '1', level: LogLevel.info, message: 'database')],
