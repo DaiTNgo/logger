@@ -49,9 +49,10 @@ class LogRow extends StatelessWidget {
               bottom: BorderSide(
                 color: isActive ? AppColors.primary : AppColors.border,
               ),
-              left: isActive
-                  ? const BorderSide(color: AppColors.primary, width: 4)
-                  : BorderSide.none,
+              left: BorderSide(
+                color: isActive ? AppColors.primary : Colors.transparent,
+                width: 4,
+              ),
             ),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

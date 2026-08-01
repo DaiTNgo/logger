@@ -588,6 +588,24 @@ void main() {
     expect(find.byKey(const Key('keyword_count')), findsNothing);
   });
 
+  testWidgets('selecting a log row keeps its content position stable', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MyApp());
+
+    final row = find.byKey(const Key('log_row_10_42_01'));
+    final timestamp = find.descendant(
+      of: row,
+      matching: find.text('10:42:01'),
+    );
+    final timestampBeforeTap = tester.getTopLeft(timestamp);
+
+    await tester.tap(row);
+    await tester.pump();
+
+    expect(tester.getTopLeft(timestamp), timestampBeforeTap);
+  });
+
   testWidgets('tapping a log row moves the active rail to that row', (
     tester,
   ) async {
