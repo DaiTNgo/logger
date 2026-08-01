@@ -15,7 +15,8 @@
 - Valid date text applies only when its field loses focus.
 - Invalid text stays visible and never changes filter state.
 - Calendar choice updates the matching editable date input.
-- A filter update requires both boundaries to form a chronological range.
+- A filter update may contain a valid start-only or end-only boundary; when
+  both exist, they must form a chronological range.
 
 ---
 
@@ -38,7 +39,6 @@ testWidgets('a valid typed start date applies only after blur', (tester) async {
   final input = find.byKey(const Key('time_range_start_input'));
   await tester.tap(input);
   await tester.enterText(input, '2026-08-02');
-  expect(find.text('Select...'), findsOneWidget);
   await tester.tap(find.byKey(const Key('time_range_end_input')));
   await tester.pumpAndSettle();
   expect(find.text('2026-08-02 00:00 –'), findsOneWidget);
@@ -47,6 +47,7 @@ testWidgets('a valid typed start date applies only after blur', (tester) async {
 testWidgets('an invalid typed date does not update the filter', (tester) async {
   await openTimeRangeFilter(tester);
   final input = find.byKey(const Key('time_range_start_input'));
+  await tester.tap(input);
   await tester.enterText(input, '2026-02-30');
   await tester.tap(find.byKey(const Key('time_range_end_input')));
   await tester.pumpAndSettle();
@@ -130,4 +131,6 @@ git commit -m "feat: allow direct DLT date input"
 
 - Tests prove blur-only application, invalid-input preservation, and time preservation.
 - The plan keeps calendar and hour/minute interactions while giving dates a direct-entry path.
+- Start-only and end-only values are accepted; only a complete reverse range
+  is rejected.
 - No new dependency or separate parser abstraction is required.

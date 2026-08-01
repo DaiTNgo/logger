@@ -15,8 +15,9 @@ filter without replacing the existing calendar, hour, or minute controls.
 - An invalid date remains visible for correction and does not change filter
   state.
 - Calendar selection continues to update the editable date input.
-- The filter updates only when both boundaries form a valid chronological
-  range.
+- The filter may use either boundary independently: a start-only value means
+  "from this time onward" and an end-only value means "up to this time".
+- When both boundaries exist, they must form a chronological range.
 
 ## Testing
 
