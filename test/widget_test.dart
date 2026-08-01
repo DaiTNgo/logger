@@ -608,6 +608,34 @@ void main() {
     expect(find.text('2026-02-30'), findsOneWidget);
   });
 
+  testWidgets('a valid typed date applies when the time-range panel closes', (
+    tester,
+  ) async {
+    await openTimeRangeFilter(tester);
+    final input = find.byKey(const Key('time_range_start_input'));
+    await tester.tap(input);
+    await tester.enterText(input, '2026-08-02');
+    await tester.tapAt(const Offset(10, 500));
+    await tester.pumpAndSettle();
+    expect(find.text('2026-08-02 00:00 –'), findsOneWidget);
+  });
+
+  testWidgets('a time update preserves invalid typed date text', (
+    tester,
+  ) async {
+    await openTimeRangeFilter(tester);
+    final input = find.byKey(const Key('time_range_start_input'));
+    await tester.tap(input);
+    await tester.enterText(input, '2026-02-30');
+    await selectTimeOption(
+      tester,
+      const Key('time_range_start_hour'),
+      const Key('time_range_start_hour_options'),
+      const Key('time_range_start_hour_option_10'),
+    );
+    expect(find.text('2026-02-30'), findsOneWidget);
+  });
+
   testWidgets('typing a date preserves the selected start time', (
     tester,
   ) async {

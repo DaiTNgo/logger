@@ -333,12 +333,15 @@ class _DltFilterChip extends StatelessWidget {
   );
 
   void _showTimeRangeSelector(BuildContext context) {
+    final panelKey = GlobalKey<_TimeRangePanelState>();
     _showDropdown(
       anchorContext: context,
       dropdownKey: const Key('filter_dropdown_time_range'),
+      onDismiss: () => panelKey.currentState?.submitFocusedDate(),
       childBuilder: (dismiss) => SizedBox(
         width: 320,
         child: _TimeRangePanel(
+          key: panelKey,
           initialStart: _parseDateTime(filter.rangeStart),
           initialEnd: _parseDateTime(filter.rangeEnd),
           dismissPanel: dismiss,
@@ -358,6 +361,7 @@ class _DltFilterChip extends StatelessWidget {
 
 class _TimeRangePanel extends StatefulWidget {
   const _TimeRangePanel({
+    super.key,
     this.initialStart,
     this.initialEnd,
     required this.dismissPanel,
@@ -380,6 +384,8 @@ class _TimeRangePanelState extends State<_TimeRangePanel> {
   late final TextEditingController _endDateController;
   late final FocusNode _startDateFocusNode;
   late final FocusNode _endDateFocusNode;
+  var _startDateTextDirty = false;
+  var _endDateTextDirty = false;
 
   @override
   void initState() {
@@ -425,14 +431,32 @@ class _TimeRangePanelState extends State<_TimeRangePanel> {
     );
   }
 
-  void _updateBoundary({required bool isStart, required DateTime value}) {
+  void submitFocusedDate() {
+    if (_startDateFocusNode.hasFocus) {
+      _submitDate(isStart: true, value: _startDateController.text);
+    } else if (_endDateFocusNode.hasFocus) {
+      _submitDate(isStart: false, value: _endDateController.text);
+    }
+  }
+
+  void _updateBoundary({
+    required bool isStart,
+    required DateTime value,
+    bool syncDateText = true,
+  }) {
     setState(() {
       if (isStart) {
         _start = value;
-        _startDateController.text = _formatDate(value);
+        if (syncDateText) {
+          _startDateController.text = _formatDate(value);
+          _startDateTextDirty = false;
+        }
       } else {
         _end = value;
-        _endDateController.text = _formatDate(value);
+        if (syncDateText) {
+          _endDateController.text = _formatDate(value);
+          _endDateTextDirty = false;
+        }
       }
     });
     if (_start == null || _end == null || !_start!.isAfter(_end!)) {
@@ -502,6 +526,9 @@ class _TimeRangePanelState extends State<_TimeRangePanel> {
                       isHour ? value : base.hour,
                       isHour ? base.minute : value,
                     ),
+                    syncDateText: isStart
+                        ? !_startDateTextDirty
+                        : !_endDateTextDirty,
                   );
                   dismiss();
                 },
@@ -550,6 +577,7 @@ class _TimeRangePanelState extends State<_TimeRangePanel> {
           value: _start,
           dateController: _startDateController,
           dateFocusNode: _startDateFocusNode,
+          onDateChanged: (_) => _startDateTextDirty = true,
           onCalendarTap: (context) => _showCalendar(context, isStart: true),
           onHourTap: (context) =>
               _showTimeOptions(context, isStart: true, isHour: true),
@@ -567,6 +595,7 @@ class _TimeRangePanelState extends State<_TimeRangePanel> {
           value: _end,
           dateController: _endDateController,
           dateFocusNode: _endDateFocusNode,
+          onDateChanged: (_) => _endDateTextDirty = true,
           onCalendarTap: (context) => _showCalendar(context, isStart: false),
           onHourTap: (context) =>
               _showTimeOptions(context, isStart: false, isHour: true),
@@ -589,6 +618,7 @@ class _DateTimeSection extends StatelessWidget {
     required this.value,
     required this.dateController,
     required this.dateFocusNode,
+    required this.onDateChanged,
     required this.onCalendarTap,
     required this.onHourTap,
     required this.onMinuteTap,
@@ -603,6 +633,7 @@ class _DateTimeSection extends StatelessWidget {
   final DateTime? value;
   final TextEditingController dateController;
   final FocusNode dateFocusNode;
+  final ValueChanged<String> onDateChanged;
   final ValueChanged<BuildContext> onCalendarTap;
   final ValueChanged<BuildContext> onHourTap;
   final ValueChanged<BuildContext> onMinuteTap;
@@ -626,6 +657,7 @@ class _DateTimeSection extends StatelessWidget {
           key: dateInputKey,
           controller: dateController,
           focusNode: dateFocusNode,
+          onChanged: onDateChanged,
           decoration: InputDecoration(
             hintText: 'YYYY-MM-DD',
             suffixIcon: Builder(
@@ -744,8 +776,8 @@ void _showDropdown({
   void dismiss() {
     if (closed) return;
     closed = true;
-    entry.remove();
     onDismiss?.call();
+    entry.remove();
   }
 
   entry = OverlayEntry(
