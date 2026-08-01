@@ -602,6 +602,7 @@ void main() {
   ) async {
     await openTimeRangeFilter(tester);
     final input = find.byKey(const Key('time_range_start_input'));
+    await tester.tap(input);
     await tester.enterText(input, '2026-02-30');
     await tester.tap(find.byKey(const Key('time_range_end_input')));
     await tester.pumpAndSettle();
