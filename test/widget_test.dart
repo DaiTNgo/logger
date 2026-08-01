@@ -773,7 +773,7 @@ void main() {
     expect(find.byType(AlertDialog), findsNothing);
   });
 
-  testWidgets('outside click closes the full nested time range popover stack', (
+  testWidgets('outside click dismisses a nested child before its parent', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 700));
@@ -811,11 +811,16 @@ void main() {
     await tester.tapAt(const Offset(1500, 650));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('filter_dropdown_time_range')), findsNothing);
+    expect(find.byKey(const Key('filter_dropdown_time_range')), findsOneWidget);
     expect(
       find.byKey(const Key('time_range_start_hour_options')),
       findsNothing,
     );
+
+    await tester.tapAt(const Offset(1500, 650));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('filter_dropdown_time_range')), findsNothing);
     expect(
       find.text(
         '${formatDate(selectedDate)} 00:00 – ${formatDate(selectedDate)} 00:00',

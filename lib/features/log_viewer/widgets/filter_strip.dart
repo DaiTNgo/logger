@@ -464,13 +464,27 @@ class _TimeRangePanelState extends State<_TimeRangePanel> {
     }
   }
 
+  void _clearBoundary({required bool isStart}) {
+    setState(() {
+      if (isStart) {
+        _start = null;
+        _startDateController.clear();
+        _startDateTextDirty = false;
+      } else {
+        _end = null;
+        _endDateController.clear();
+        _endDateTextDirty = false;
+      }
+    });
+    widget.onUpdate(_start, _end);
+  }
+
   void _showCalendar(BuildContext context, {required bool isStart}) {
     _showDropdown(
       anchorContext: context,
       dropdownKey: Key(
         isStart ? 'inline_start_calendar' : 'inline_end_calendar',
       ),
-      onOutsideTap: widget.dismissPanel,
       childBuilder: (dismiss) => SizedBox(
         width: 320,
         child: CalendarDatePicker(
@@ -505,7 +519,6 @@ class _TimeRangePanelState extends State<_TimeRangePanel> {
     _showDropdown(
       anchorContext: context,
       dropdownKey: Key('${prefix}_options'),
-      onOutsideTap: widget.dismissPanel,
       childBuilder: (dismiss) => SizedBox(
         width: 120,
         child: Column(
@@ -574,10 +587,12 @@ class _TimeRangePanelState extends State<_TimeRangePanel> {
           calendarKey: const Key('time_range_start_calendar'),
           hourKey: const Key('time_range_start_hour'),
           minuteKey: const Key('time_range_start_minute'),
+          clearKey: const Key('time_range_clear_start'),
           value: _start,
           dateController: _startDateController,
           dateFocusNode: _startDateFocusNode,
           onDateChanged: (_) => _startDateTextDirty = true,
+          onClear: () => _clearBoundary(isStart: true),
           onCalendarTap: (context) => _showCalendar(context, isStart: true),
           onHourTap: (context) =>
               _showTimeOptions(context, isStart: true, isHour: true),
@@ -592,10 +607,12 @@ class _TimeRangePanelState extends State<_TimeRangePanel> {
           calendarKey: const Key('time_range_end_calendar'),
           hourKey: const Key('time_range_end_hour'),
           minuteKey: const Key('time_range_end_minute'),
+          clearKey: const Key('time_range_clear_end'),
           value: _end,
           dateController: _endDateController,
           dateFocusNode: _endDateFocusNode,
           onDateChanged: (_) => _endDateTextDirty = true,
+          onClear: () => _clearBoundary(isStart: false),
           onCalendarTap: (context) => _showCalendar(context, isStart: false),
           onHourTap: (context) =>
               _showTimeOptions(context, isStart: false, isHour: true),
@@ -615,10 +632,12 @@ class _DateTimeSection extends StatelessWidget {
     required this.calendarKey,
     required this.hourKey,
     required this.minuteKey,
+    required this.clearKey,
     required this.value,
     required this.dateController,
     required this.dateFocusNode,
     required this.onDateChanged,
+    required this.onClear,
     required this.onCalendarTap,
     required this.onHourTap,
     required this.onMinuteTap,
@@ -630,10 +649,12 @@ class _DateTimeSection extends StatelessWidget {
   final Key calendarKey;
   final Key hourKey;
   final Key minuteKey;
+  final Key clearKey;
   final DateTime? value;
   final TextEditingController dateController;
   final FocusNode dateFocusNode;
   final ValueChanged<String> onDateChanged;
+  final VoidCallback onClear;
   final ValueChanged<BuildContext> onCalendarTap;
   final ValueChanged<BuildContext> onHourTap;
   final ValueChanged<BuildContext> onMinuteTap;
@@ -642,13 +663,25 @@ class _DateTimeSection extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(
-        title,
-        style: const TextStyle(
-          color: AppColors.secondaryText,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
+      Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.secondaryText,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          TextButton(
+            key: clearKey,
+            onPressed: onClear,
+            child: const Text('Clear'),
+          ),
+        ],
       ),
       const SizedBox(height: 8),
       Container(
@@ -765,7 +798,6 @@ void _showDropdown({
   required Key dropdownKey,
   required Widget Function(VoidCallback dismiss) childBuilder,
   VoidCallback? onDismiss,
-  VoidCallback? onOutsideTap,
 }) {
   final anchor = anchorContext.findRenderObject()! as RenderBox;
   final overlay = Overlay.of(anchorContext);
@@ -786,10 +818,7 @@ void _showDropdown({
         Positioned.fill(
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: () {
-              dismiss();
-              onOutsideTap?.call();
-            },
+            onTap: dismiss,
           ),
         ),
         Positioned.fill(
