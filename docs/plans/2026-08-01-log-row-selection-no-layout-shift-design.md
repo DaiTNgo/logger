@@ -18,6 +18,8 @@ change, so selecting a row cannot cause layout shift.
 
 ## Verification
 
-Add a widget test that records the tapped row's bounds before and after it
-becomes active, then asserts the bounds are unchanged. Keep the existing test
-that verifies the active rail is blue and 4 px wide.
+Add a widget test that records the tapped row's timestamp position before and
+after it becomes active, then asserts it is unchanged. This detects the
+user-visible shift inside a row even when the row itself is constrained to the
+same outer width. Keep the existing test that verifies the active rail is blue
+and 4 px wide.

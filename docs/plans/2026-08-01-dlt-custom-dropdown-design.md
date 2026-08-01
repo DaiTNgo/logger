@@ -36,6 +36,10 @@ Time range provides Today, Last 7 days, Last 30 days, Last 90 days, and
 Custom presets plus separate date and time controls for both Start and End.
 The picker uses `AppColors.surface`, `AppColors.surfaceContainer`,
 `AppColors.border`, `AppColors.text`, and `AppColors.secondaryText`.
+The Time range dropdown closes before opening a date or time modal, then
+reopens with the selected value so modal layers never overlap.
+Time uses a 24-hour clock with separate `00–23` hour and `00–59` minute
+controls; AM/PM is not shown.
 
 ## Testing
 

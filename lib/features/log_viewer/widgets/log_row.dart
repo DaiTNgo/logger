@@ -126,9 +126,11 @@ class _LogMessage extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 4),
               decoration: BoxDecoration(
                 color: isActive ? AppColors.primary : const Color(0x66D0E2FF),
-                border: isActive
-                    ? null
-                    : Border.all(color: const Color(0x4D0F62FE)),
+                border: Border.all(
+                  color: isActive
+                      ? Colors.transparent
+                      : const Color(0x4D0F62FE),
+                ),
                 borderRadius: BorderRadius.circular(2),
               ),
               child: Text(

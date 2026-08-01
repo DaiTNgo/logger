@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:logger/features/log_viewer/models/dlt_filter.dart';
+import 'package:logger/features/log_viewer/widgets/filter_strip.dart';
 import 'package:logger/main.dart';
 
 Future<void> openFilterMenu(WidgetTester tester) async {
@@ -12,6 +14,52 @@ Future<void> openFilterMenu(WidgetTester tester) async {
       .first;
   await tester.dragUntilVisible(button, filterScroll, const Offset(-200, 0));
   await tester.tap(button);
+  await tester.pumpAndSettle();
+}
+
+Future<void> selectCalendarDate(
+  WidgetTester tester,
+  Key calendarKey,
+  Key popoverKey,
+  DateTime date,
+) async {
+  await tester.tap(find.byKey(calendarKey));
+  await tester.pumpAndSettle();
+  final calendar = find.byKey(popoverKey);
+  final localizations = MaterialLocalizations.of(tester.element(calendar));
+  await tester.tap(
+    find.descendant(
+      of: calendar,
+      matching: find.bySemanticsLabel(
+        '${localizations.formatDecimal(date.day)}, '
+        '${localizations.formatFullDate(date)}, '
+        '${localizations.currentDateLabel}',
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+String formatDate(DateTime value) =>
+    '${value.year}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
+
+Future<void> selectTimeOption(
+  WidgetTester tester,
+  Key controlKey,
+  Key popoverKey,
+  Key optionKey,
+) async {
+  await tester.tap(find.byKey(controlKey));
+  await tester.pumpAndSettle();
+  await tester.scrollUntilVisible(
+    find.byKey(optionKey),
+    100,
+    scrollable: find.descendant(
+      of: find.byKey(popoverKey),
+      matching: find.byType(Scrollable),
+    ),
+  );
+  await tester.tap(find.byKey(optionKey));
   await tester.pumpAndSettle();
 }
 
@@ -258,7 +306,7 @@ void main() {
     expect(find.text('Verbose'), findsOneWidget);
   });
 
-  testWidgets('a time range stores its start and end values', (tester) async {
+  testWidgets('start hour opens all 24 hour options', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1600, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(const MyApp());
@@ -269,18 +317,256 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('filter_value_time_range')));
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.byKey(const Key('time_range_start')),
-      '2026-08-01 10:00',
+
+    await tester.tap(find.byKey(const Key('time_range_start_hour')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('time_range_start_hour_options')),
+      findsOneWidget,
     );
-    await tester.enterText(
-      find.byKey(const Key('time_range_end')),
-      '2026-08-01 11:00',
+    for (var hour = 0; hour < 24; hour++) {
+      expect(
+        find.byKey(Key('time_range_start_hour_option_$hour')),
+        findsOneWidget,
+      );
+    }
+  });
+
+  testWidgets('end minute opens all 60 minute options', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1600, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(const MyApp());
+
+    await tester.tap(find.text('Clear all'));
+    await openFilterMenu(tester);
+    await tester.tap(find.byKey(const Key('add_filter_time_range')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('filter_value_time_range')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('time_range_end_minute')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('time_range_end_minute_options')),
+      findsOneWidget,
+    );
+    for (var minute = 0; minute < 60; minute++) {
+      expect(
+        find.byKey(Key('time_range_end_minute_option_$minute')),
+        findsOneWidget,
+      );
+    }
+  });
+
+  testWidgets('a valid nested time range auto-saves its start and end values', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1600, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final selectedDate = DateUtils.dateOnly(DateTime.now());
+    await tester.pumpWidget(const MyApp());
+
+    await tester.tap(find.text('Clear all'));
+    await openFilterMenu(tester);
+    await tester.tap(find.byKey(const Key('add_filter_time_range')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('filter_value_time_range')));
+    await tester.pumpAndSettle();
+
+    await selectCalendarDate(
+      tester,
+      const Key('time_range_start_calendar'),
+      const Key('inline_start_calendar'),
+      selectedDate,
+    );
+    await selectTimeOption(
+      tester,
+      const Key('time_range_start_hour'),
+      const Key('time_range_start_hour_options'),
+      const Key('time_range_start_hour_option_10'),
+    );
+    await selectTimeOption(
+      tester,
+      const Key('time_range_start_minute'),
+      const Key('time_range_start_minute_options'),
+      const Key('time_range_start_minute_option_0'),
+    );
+
+    await selectCalendarDate(
+      tester,
+      const Key('time_range_end_calendar'),
+      const Key('inline_end_calendar'),
+      selectedDate,
+    );
+    await selectTimeOption(
+      tester,
+      const Key('time_range_end_hour'),
+      const Key('time_range_end_hour_options'),
+      const Key('time_range_end_hour_option_11'),
+    );
+    await selectTimeOption(
+      tester,
+      const Key('time_range_end_minute'),
+      const Key('time_range_end_minute_options'),
+      const Key('time_range_end_minute_option_0'),
+    );
+
+    expect(
+      find.text(
+        '${formatDate(selectedDate)} 10:00 – ${formatDate(selectedDate)} 11:00',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('an invalid nested time range does not update the filter', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1600, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final selectedDate = DateUtils.dateOnly(DateTime.now());
+    await tester.pumpWidget(const MyApp());
+
+    await tester.tap(find.text('Clear all'));
+    await openFilterMenu(tester);
+    await tester.tap(find.byKey(const Key('add_filter_time_range')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('filter_value_time_range')));
+    await tester.pumpAndSettle();
+
+    await selectCalendarDate(
+      tester,
+      const Key('time_range_start_calendar'),
+      const Key('inline_start_calendar'),
+      selectedDate,
+    );
+    await selectTimeOption(
+      tester,
+      const Key('time_range_start_hour'),
+      const Key('time_range_start_hour_options'),
+      const Key('time_range_start_hour_option_11'),
+    );
+    await selectCalendarDate(
+      tester,
+      const Key('time_range_end_calendar'),
+      const Key('inline_end_calendar'),
+      selectedDate,
+    );
+    await selectTimeOption(
+      tester,
+      const Key('time_range_end_hour'),
+      const Key('time_range_end_hour_options'),
+      const Key('time_range_end_hour_option_10'),
     );
     await tester.tapAt(const Offset(10, 500));
     await tester.pumpAndSettle();
 
-    expect(find.text('2026-08-01 10:00 – 2026-08-01 11:00'), findsOneWidget);
+    expect(find.text('Select...'), findsOneWidget);
+  });
+
+  testWidgets('start calendar opens in a popover', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1600, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(const MyApp());
+
+    await tester.tap(find.text('Clear all'));
+    await openFilterMenu(tester);
+    await tester.tap(find.byKey(const Key('add_filter_time_range')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('filter_value_time_range')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('time_range_start_calendar')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('inline_start_calendar')), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
+  });
+
+  testWidgets('outside click closes the full nested time range popover stack', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1600, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final selectedDate = DateUtils.dateOnly(DateTime.now());
+    await tester.pumpWidget(const MyApp());
+
+    await tester.tap(find.text('Clear all'));
+    await openFilterMenu(tester);
+    await tester.tap(find.byKey(const Key('add_filter_time_range')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('filter_value_time_range')));
+    await tester.pumpAndSettle();
+    await selectCalendarDate(
+      tester,
+      const Key('time_range_start_calendar'),
+      const Key('inline_start_calendar'),
+      selectedDate,
+    );
+    await selectCalendarDate(
+      tester,
+      const Key('time_range_end_calendar'),
+      const Key('inline_end_calendar'),
+      selectedDate,
+    );
+
+    await tester.tap(find.byKey(const Key('time_range_start_hour')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('filter_dropdown_time_range')), findsOneWidget);
+    expect(
+      find.byKey(const Key('time_range_start_hour_options')),
+      findsOneWidget,
+    );
+
+    await tester.tapAt(const Offset(1500, 650));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('filter_dropdown_time_range')), findsNothing);
+    expect(
+      find.byKey(const Key('time_range_start_hour_options')),
+      findsNothing,
+    );
+    expect(
+      find.text(
+        '${formatDate(selectedDate)} 00:00 – ${formatDate(selectedDate)} 00:00',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('an upward short dropdown remains adjacent to its anchor', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(600, 400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.bottomCenter,
+            child: FilterStrip(
+              filters: const [DltFilter(fieldId: 'verbose_mode')],
+              onSelectField: (_) {},
+              onUpdateFilter: (_) {},
+              onRemoveFilter: (_) {},
+              onClearFilters: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final anchor = find.byKey(const Key('filter_value_verbose_mode'));
+    await tester.tap(anchor);
+    await tester.pumpAndSettle();
+
+    final dropdown = find.byKey(const Key('filter_dropdown_verbose_mode'));
+    expect(tester.getTopLeft(dropdown).dy, greaterThanOrEqualTo(16));
+    expect(
+      tester.getBottomRight(dropdown).dy,
+      closeTo(tester.getTopLeft(anchor).dy - 4, 1),
+    );
   });
 
   testWidgets('time range offers presets and date-time picker controls', (
@@ -298,8 +584,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Today'), findsOneWidget);
-    expect(find.byKey(const Key('time_range_start_picker')), findsOneWidget);
-    expect(find.byKey(const Key('time_range_end_picker')), findsOneWidget);
+    expect(find.byKey(const Key('time_range_start_hour')), findsOneWidget);
+    expect(find.byKey(const Key('time_range_end_minute')), findsOneWidget);
   });
 
   testWidgets('choosing an active DLT field does not add a duplicate chip', (
@@ -594,10 +880,7 @@ void main() {
     await tester.pumpWidget(const MyApp());
 
     final row = find.byKey(const Key('log_row_10_42_01'));
-    final timestamp = find.descendant(
-      of: row,
-      matching: find.text('10:42:01'),
-    );
+    final timestamp = find.descendant(of: row, matching: find.text('10:42:01'));
     final timestampBeforeTap = tester.getTopLeft(timestamp);
 
     await tester.tap(row);

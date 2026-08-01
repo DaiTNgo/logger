@@ -4,7 +4,7 @@
 
 **Goal:** Preserve the blue left selection rail in the log view without moving row content when a user selects a row.
 
-**Architecture:** `LogRow` already owns both its selected-state decoration and its tap target. Reserve the 4 px left border in both states, using transparent paint while inactive and the primary blue while active. A widget test will compare the selected row's geometry before and after a tap.
+**Architecture:** `LogRow` already owns both its selected-state decoration and its tap target. Reserve the 4 px left border in both states, using transparent paint while inactive and the primary blue while active. A widget test will compare the selected row's timestamp position before and after a tap.
 
 **Tech Stack:** Flutter, Dart, flutter_test.
 
@@ -31,26 +31,27 @@
 Add this test immediately before the existing `tapping a log row moves the active rail to that row` test:
 
 ```dart
-  testWidgets('selecting a log row keeps its layout bounds stable', (
+  testWidgets('selecting a log row keeps its content position stable', (
     tester,
   ) async {
     await tester.pumpWidget(const MyApp());
 
     final row = find.byKey(const Key('log_row_10_42_01'));
-    final boundsBeforeTap = tester.getRect(row);
+    final timestamp = find.descendant(of: row, matching: find.text('10:42:01'));
+    final timestampBeforeTap = tester.getTopLeft(timestamp);
 
     await tester.tap(row);
     await tester.pump();
 
-    expect(tester.getRect(row), boundsBeforeTap);
+    expect(tester.getTopLeft(timestamp), timestampBeforeTap);
   });
 ```
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `flutter test test/widget_test.dart --plain-name "selecting a log row keeps its layout bounds stable"`
+Run: `flutter test test/widget_test.dart --plain-name "selecting a log row keeps its content position stable"`
 
-Expected: FAIL because the previously inactive row gains a 4 px left border after the tap and its geometry changes.
+Expected: FAIL because the previously inactive row gains a 4 px left border after the tap and moves its timestamp right by 4 px.
 
 - [ ] **Step 3: Reserve the left-rail space in both states**
 
@@ -67,7 +68,7 @@ Leave the existing `bottom` border and all padding unchanged.
 
 - [ ] **Step 4: Run the focused test to verify it passes**
 
-Run: `flutter test test/widget_test.dart --plain-name "selecting a log row keeps its layout bounds stable"`
+Run: `flutter test test/widget_test.dart --plain-name "selecting a log row keeps its content position stable"`
 
 Expected: PASS.
 

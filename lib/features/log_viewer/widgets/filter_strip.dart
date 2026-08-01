@@ -215,7 +215,7 @@ class _DltFilterChip extends StatelessWidget {
     _showDropdown(
       anchorContext: context,
       dropdownKey: Key('filter_dropdown_${definition.id}'),
-      childBuilder: (_) => SizedBox(
+      childBuilder: (dismiss) => SizedBox(
         width: 320,
         child: StatefulBuilder(
           builder: (context, setDropdownState) => Padding(
@@ -331,92 +331,286 @@ class _DltFilterChip extends StatelessWidget {
   );
 
   void _showTimeRangeSelector(BuildContext context) {
-    var start = filter.rangeStart ?? '';
-    var end = filter.rangeEnd ?? '';
     _showDropdown(
       anchorContext: context,
       dropdownKey: const Key('filter_dropdown_time_range'),
-      onDismiss: () {
-        if (start.trim().isNotEmpty && end.trim().isNotEmpty) {
-          onUpdate(
-            filter.copyWith(rangeStart: start.trim(), rangeEnd: end.trim()),
-          );
-        }
-      },
-      childBuilder: (_) => SizedBox(
+      childBuilder: (dismiss) => SizedBox(
         width: 320,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Quick range',
-                style: TextStyle(color: AppColors.secondaryText, fontSize: 12),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: const [
-                  _TimePreset(label: 'Today'),
-                  _TimePreset(label: 'Last 7 days'),
-                  _TimePreset(label: 'Last 30 days'),
-                  _TimePreset(label: 'Last 90 days'),
-                ],
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                key: const Key('time_range_start'),
-                keyboardType: TextInputType.datetime,
-                onChanged: (value) => start = value,
-                decoration: const InputDecoration(
-                  labelText: 'Start',
-                  hintText: 'YYYY-MM-DD HH:mm',
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                key: const Key('time_range_end'),
-                keyboardType: TextInputType.datetime,
-                onChanged: (value) => end = value,
-                decoration: const InputDecoration(
-                  labelText: 'End',
-                  hintText: 'YYYY-MM-DD HH:mm',
-                ),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  OutlinedButton.icon(
-                    key: const Key('time_range_start_picker'),
-                    onPressed: () async {
-                      final value = await _pickDateTime(context);
-                      if (value != null) start = value;
-                    },
-                    icon: const Icon(Icons.calendar_today, size: 16),
-                    label: const Text('Start date & time'),
-                  ),
-                  OutlinedButton.icon(
-                    key: const Key('time_range_end_picker'),
-                    onPressed: () async {
-                      final value = await _pickDateTime(context);
-                      if (value != null) end = value;
-                    },
-                    icon: const Icon(Icons.schedule, size: 16),
-                    label: const Text('End date & time'),
-                  ),
-                ],
-              ),
-            ],
+        child: _TimeRangePanel(
+          initialStart: _parseDateTime(filter.rangeStart),
+          initialEnd: _parseDateTime(filter.rangeEnd),
+          dismissPanel: dismiss,
+          onUpdate: (start, end) => onUpdate(
+            filter.copyWith(
+              rangeStart: _formatDateTime(start),
+              rangeEnd: _formatDateTime(end),
+            ),
           ),
         ),
       ),
     );
   }
+}
+
+class _TimeRangePanel extends StatefulWidget {
+  const _TimeRangePanel({
+    this.initialStart,
+    this.initialEnd,
+    required this.dismissPanel,
+    required this.onUpdate,
+  });
+
+  final DateTime? initialStart;
+  final DateTime? initialEnd;
+  final VoidCallback dismissPanel;
+  final void Function(DateTime start, DateTime end) onUpdate;
+
+  @override
+  State<_TimeRangePanel> createState() => _TimeRangePanelState();
+}
+
+class _TimeRangePanelState extends State<_TimeRangePanel> {
+  late DateTime? _start = widget.initialStart;
+  late DateTime? _end = widget.initialEnd;
+
+  void _setValue({required bool isStart, required DateTime value}) {
+    setState(() {
+      if (isStart) {
+        _start = value;
+      } else {
+        _end = value;
+      }
+    });
+    if (_start != null && _end != null && !_start!.isAfter(_end!)) {
+      widget.onUpdate(_start!, _end!);
+    }
+  }
+
+  void _showCalendar(BuildContext context, {required bool isStart}) {
+    _showDropdown(
+      anchorContext: context,
+      dropdownKey: Key(
+        isStart ? 'inline_start_calendar' : 'inline_end_calendar',
+      ),
+      onOutsideTap: widget.dismissPanel,
+      childBuilder: (dismiss) => SizedBox(
+        width: 320,
+        child: CalendarDatePicker(
+          initialDate: (isStart ? _start : _end) ?? DateTime.now(),
+          firstDate: DateTime(2000),
+          lastDate: DateTime(2100),
+          onDateChanged: (date) {
+            final current = isStart ? _start : _end;
+            final updated = DateTime(
+              date.year,
+              date.month,
+              date.day,
+              current?.hour ?? 0,
+              current?.minute ?? 0,
+            );
+            _setValue(isStart: isStart, value: updated);
+            dismiss();
+          },
+        ),
+      ),
+    );
+  }
+
+  void _showTimeOptions(
+    BuildContext context, {
+    required bool isStart,
+    required bool isHour,
+  }) {
+    final part = isHour ? 'hour' : 'minute';
+    final boundary = isHour ? 24 : 60;
+    final prefix = 'time_range_${isStart ? 'start' : 'end'}_$part';
+    _showDropdown(
+      anchorContext: context,
+      dropdownKey: Key('${prefix}_options'),
+      onOutsideTap: widget.dismissPanel,
+      childBuilder: (dismiss) => SizedBox(
+        width: 120,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var value = 0; value < boundary; value++)
+              InkWell(
+                key: Key('${prefix}_option_$value'),
+                onTap: () {
+                  final current = isStart ? _start : _end;
+                  final base = current ?? DateTime.now();
+                  _setValue(
+                    isStart: isStart,
+                    value: DateTime(
+                      base.year,
+                      base.month,
+                      base.day,
+                      isHour ? value : base.hour,
+                      isHour ? base.minute : value,
+                    ),
+                  );
+                  dismiss();
+                },
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 36,
+                  child: Center(child: Text(value.toString().padLeft(2, '0'))),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.all(12),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Quick range',
+          style: TextStyle(color: AppColors.secondaryText, fontSize: 12),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: const [
+            _TimePreset(label: 'Today'),
+            _TimePreset(label: 'Last 7 days'),
+            _TimePreset(label: 'Last 30 days'),
+            _TimePreset(label: 'Last 90 days'),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _DateTimeSection(
+          title: 'START DATE & TIME',
+          dateKey: const Key('time_range_start'),
+          calendarKey: const Key('time_range_start_calendar'),
+          hourKey: const Key('time_range_start_hour'),
+          minuteKey: const Key('time_range_start_minute'),
+          value: _start,
+          onCalendarTap: (context) => _showCalendar(context, isStart: true),
+          onHourTap: (context) =>
+              _showTimeOptions(context, isStart: true, isHour: true),
+          onMinuteTap: (context) =>
+              _showTimeOptions(context, isStart: true, isHour: false),
+        ),
+        const SizedBox(height: 16),
+        _DateTimeSection(
+          title: 'END DATE & TIME',
+          dateKey: const Key('time_range_end'),
+          calendarKey: const Key('time_range_end_calendar'),
+          hourKey: const Key('time_range_end_hour'),
+          minuteKey: const Key('time_range_end_minute'),
+          value: _end,
+          onCalendarTap: (context) => _showCalendar(context, isStart: false),
+          onHourTap: (context) =>
+              _showTimeOptions(context, isStart: false, isHour: true),
+          onMinuteTap: (context) =>
+              _showTimeOptions(context, isStart: false, isHour: false),
+        ),
+      ],
+    ),
+  );
+}
+
+class _DateTimeSection extends StatelessWidget {
+  const _DateTimeSection({
+    required this.title,
+    required this.dateKey,
+    required this.calendarKey,
+    required this.hourKey,
+    required this.minuteKey,
+    required this.value,
+    required this.onCalendarTap,
+    required this.onHourTap,
+    required this.onMinuteTap,
+  });
+
+  final String title;
+  final Key dateKey;
+  final Key calendarKey;
+  final Key hourKey;
+  final Key minuteKey;
+  final DateTime? value;
+  final ValueChanged<BuildContext> onCalendarTap;
+  final ValueChanged<BuildContext> onHourTap;
+  final ValueChanged<BuildContext> onMinuteTap;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        title,
+        style: const TextStyle(
+          color: AppColors.secondaryText,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      const SizedBox(height: 8),
+      InputDecorator(
+        key: dateKey,
+        decoration: InputDecoration(
+          hintText: 'YYYY-MM-DD HH:mm',
+          suffixIcon: Builder(
+            builder: (iconContext) => IconButton(
+              key: calendarKey,
+              icon: const Icon(Icons.calendar_today, size: 18),
+              onPressed: () => onCalendarTap(iconContext),
+            ),
+          ),
+        ),
+        child: Text(value == null ? '' : _formatDateTime(value!)),
+      ),
+      const SizedBox(height: 8),
+      Row(
+        children: [
+          Expanded(
+            child: _TimePart(
+              key: hourKey,
+              value: value?.hour,
+              onTap: onHourTap,
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8),
+            child: Text(':'),
+          ),
+          Expanded(
+            child: _TimePart(
+              key: minuteKey,
+              value: value?.minute,
+              onTap: onMinuteTap,
+            ),
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
+class _TimePart extends StatelessWidget {
+  const _TimePart({super.key, this.value, required this.onTap});
+
+  final int? value;
+  final ValueChanged<BuildContext> onTap;
+
+  @override
+  Widget build(BuildContext context) => Builder(
+    builder: (partContext) => InkWell(
+      onTap: () => onTap(partContext),
+      child: InputDecorator(
+        decoration: const InputDecoration(hintText: '00'),
+        child: Text(value?.toString().padLeft(2, '0') ?? ''),
+      ),
+    ),
+  );
 }
 
 class _TimePreset extends StatelessWidget {
@@ -434,24 +628,15 @@ class _TimePreset extends StatelessWidget {
   );
 }
 
-Future<String?> _pickDateTime(BuildContext context) async {
-  final date = await showDatePicker(
-    context: context,
-    initialDate: DateTime.now(),
-    firstDate: DateTime(2000),
-    lastDate: DateTime(2100),
-  );
-  if (date == null || !context.mounted) return null;
-  final time = await showTimePicker(
-    context: context,
-    initialTime: TimeOfDay.now(),
-  );
-  if (time == null) return null;
-  final month = date.month.toString().padLeft(2, '0');
-  final day = date.day.toString().padLeft(2, '0');
-  final hour = time.hour.toString().padLeft(2, '0');
-  final minute = time.minute.toString().padLeft(2, '0');
-  return '${date.year}-$month-$day $hour:$minute';
+DateTime? _parseDateTime(String? value) =>
+    value == null ? null : DateTime.tryParse(value.replaceFirst(' ', 'T'));
+
+String _formatDateTime(DateTime value) {
+  final month = value.month.toString().padLeft(2, '0');
+  final day = value.day.toString().padLeft(2, '0');
+  final hour = value.hour.toString().padLeft(2, '0');
+  final minute = value.minute.toString().padLeft(2, '0');
+  return '${value.year}-$month-$day $hour:$minute';
 }
 
 void _showDropdown({
@@ -459,6 +644,7 @@ void _showDropdown({
   required Key dropdownKey,
   required Widget Function(VoidCallback dismiss) childBuilder,
   VoidCallback? onDismiss,
+  VoidCallback? onOutsideTap,
 }) {
   final anchor = anchorContext.findRenderObject()! as RenderBox;
   final overlay = Overlay.of(anchorContext);
@@ -479,28 +665,76 @@ void _showDropdown({
         Positioned.fill(
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: dismiss,
+            onTap: () {
+              dismiss();
+              onOutsideTap?.call();
+            },
           ),
         ),
-        Positioned(
-          left: offset.dx,
-          top: offset.dy + anchor.size.height + 4,
-          child: Material(
-            key: dropdownKey,
-            color: AppColors.surface,
-            elevation: 8,
-            clipBehavior: Clip.antiAlias,
-            shape: RoundedRectangleBorder(
-              side: const BorderSide(color: AppColors.border),
-              borderRadius: BorderRadius.circular(16),
+        Positioned.fill(
+          child: CustomSingleChildLayout(
+            delegate: _DropdownPositionDelegate(anchor: offset & anchor.size),
+            child: Material(
+              key: dropdownKey,
+              color: AppColors.surface,
+              elevation: 8,
+              clipBehavior: Clip.antiAlias,
+              shape: RoundedRectangleBorder(
+                side: const BorderSide(color: AppColors.border),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: SingleChildScrollView(child: childBuilder(dismiss)),
             ),
-            child: childBuilder(dismiss),
           ),
         ),
       ],
     ),
   );
   overlay.insert(entry);
+}
+
+class _DropdownPositionDelegate extends SingleChildLayoutDelegate {
+  const _DropdownPositionDelegate({required this.anchor});
+
+  static const _safeMargin = 16.0;
+  static const _gap = 4.0;
+  static const _maxWidth = 320.0;
+
+  final Rect anchor;
+
+  @override
+  BoxConstraints getConstraintsForChild(BoxConstraints constraints) {
+    final size = constraints.biggest;
+    final above = (anchor.top - _safeMargin).clamp(0.0, size.height);
+    final below = (size.height - anchor.bottom - _gap - _safeMargin).clamp(
+      0.0,
+      size.height,
+    );
+    final maxHeight = above > below ? above : below;
+    return BoxConstraints(
+      maxWidth: (size.width - _safeMargin * 2).clamp(0.0, _maxWidth),
+      maxHeight: maxHeight,
+    );
+  }
+
+  @override
+  Offset getPositionForChild(Size size, Size childSize) {
+    final above = anchor.top - _safeMargin;
+    final below = size.height - anchor.bottom - _gap - _safeMargin;
+    final opensUp = childSize.height > below && above > below;
+    final maxLeft = size.width - childSize.width - _safeMargin;
+    final maxTop = size.height - childSize.height - _safeMargin;
+    final left = anchor.left.clamp(_safeMargin, maxLeft);
+    final preferredTop = opensUp
+        ? anchor.top - _gap - childSize.height
+        : anchor.bottom + _gap;
+    final top = preferredTop.clamp(_safeMargin, maxTop);
+    return Offset(left, top);
+  }
+
+  @override
+  bool shouldRelayout(_DropdownPositionDelegate oldDelegate) =>
+      oldDelegate.anchor != anchor;
 }
 
 class _FilterLabel extends StatelessWidget {
