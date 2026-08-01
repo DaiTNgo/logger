@@ -18,6 +18,18 @@ Future<void> openFilterMenu(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> openTimeRangeFilter(WidgetTester tester) async {
+  await tester.binding.setSurfaceSize(const Size(1600, 700));
+  addTearDown(() => tester.binding.setSurfaceSize(null));
+  await tester.pumpWidget(const MyApp());
+  await tester.tap(find.text('Clear all'));
+  await openFilterMenu(tester);
+  await tester.tap(find.byKey(const Key('add_filter_time_range')));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(const Key('filter_value_time_range')));
+  await tester.pumpAndSettle();
+}
+
 Future<void> selectCalendarDate(
   WidgetTester tester,
   Key calendarKey,
@@ -570,6 +582,31 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Select...'), findsOneWidget);
+  });
+
+  testWidgets('a valid typed start date applies only after blur', (
+    tester,
+  ) async {
+    await openTimeRangeFilter(tester);
+    final input = find.byKey(const Key('time_range_start_input'));
+    await tester.tap(input);
+    await tester.enterText(input, '2026-08-02');
+    expect(find.text('Select...'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('time_range_end_input')));
+    await tester.pumpAndSettle();
+    expect(find.text('2026-08-02 00:00 –'), findsOneWidget);
+  });
+
+  testWidgets('an invalid typed date does not update the filter', (
+    tester,
+  ) async {
+    await openTimeRangeFilter(tester);
+    final input = find.byKey(const Key('time_range_start_input'));
+    await tester.enterText(input, '2026-02-30');
+    await tester.tap(find.byKey(const Key('time_range_end_input')));
+    await tester.pumpAndSettle();
+    expect(find.text('Select...'), findsOneWidget);
+    expect(find.text('2026-02-30'), findsOneWidget);
   });
 
   testWidgets('start calendar opens in a popover', (tester) async {
