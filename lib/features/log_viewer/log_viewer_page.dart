@@ -38,12 +38,15 @@ class _LogViewerPageState extends State<LogViewerPage> {
   var _displayMode = SearchDisplayMode.allLogs;
   var _scrollGeneration = 0;
   var _activeDestination = 0;
-  int? _activeLogIndex = 5;
+  int? _activeLogIndex;
 
   @override
   void initState() {
     super.initState();
     _rowKeys = _createRowKeys(widget.entries.length);
+    _activeLogIndex = widget.entries.isEmpty
+        ? null
+        : 5.clamp(0, widget.entries.length - 1);
   }
 
   @override
@@ -79,7 +82,8 @@ class _LogViewerPageState extends State<LogViewerPage> {
     if (newEntries.isEmpty) return null;
 
     final oldIndex = _activeLogIndex;
-    if (oldIndex != null && oldIndex >= 0 && oldIndex < oldEntries.length) {
+    if (oldIndex == null) return null;
+    if (oldIndex >= 0 && oldIndex < oldEntries.length) {
       final selectedEntry = oldEntries[oldIndex];
       final identityIndex = newEntries.indexWhere(
         (entry) => identical(entry, selectedEntry),
@@ -87,7 +91,7 @@ class _LogViewerPageState extends State<LogViewerPage> {
       if (identityIndex != -1) return identityIndex;
     }
 
-    return (oldIndex ?? 0).clamp(0, newEntries.length - 1);
+    return oldIndex.clamp(0, newEntries.length - 1);
   }
 
   @override

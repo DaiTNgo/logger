@@ -87,6 +87,15 @@ void main() {
     expect(matches.single.ranges, const [SearchRange(0, 8)]);
   });
 
+  test('merges truly adjacent keyword ranges', () {
+    final matches = engine.search(
+      const [LogEntry(time: '1', level: LogLevel.info, message: 'database')],
+      const [SearchKeyword(text: 'data'), SearchKeyword(text: 'base')],
+    );
+
+    expect(matches.single.ranges, const [SearchRange(0, 8)]);
+  });
+
   test('treats regex characters as literal text', () {
     final matches = engine.search(
       const [LogEntry(time: '1', level: LogLevel.info, message: 'retry [1/3]')],

@@ -41,6 +41,54 @@ Future<void> _showMatchesOnly(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('short initial entries clamp the default selection', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LogViewerPage(
+          entries: [
+            _entry('11:00:00', 'first row'),
+            _entry('11:00:01', 'last row'),
+          ],
+        ),
+      ),
+    );
+
+    expect(find.byKey(const Key('active_log_row_11_00_01')), findsOneWidget);
+    expect(tester.widget<LogTable>(find.byType(LogTable)).activeIndex, 1);
+  });
+
+  testWidgets('empty initial entries have no selection', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: LogViewerPage(entries: [])),
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(const Key('active_log_row')), findsNothing);
+    expect(tester.widget<LogTable>(find.byType(LogTable)).activeIndex, isNull);
+  });
+
+  testWidgets('empty to nonempty replacement preserves no selection', (
+    tester,
+  ) async {
+    final harnessKey = GlobalKey<_EntriesHarnessState>();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: _EntriesHarness(key: harnessKey, entries: const []),
+      ),
+    );
+
+    harnessKey.currentState!.replaceEntries([
+      _entry('11:00:00', 'first new row'),
+      _entry('11:00:01', 'last new row'),
+    ]);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('active_log_row')), findsNothing);
+    expect(tester.widget<LogTable>(find.byType(LogTable)).activeIndex, isNull);
+  });
+
   testWidgets(
     'entry replacement recomputes matches and clamps the active result',
     (tester) async {
@@ -141,6 +189,113 @@ void main() {
       final rowBounds = tester.getRect(activeRow);
       expect(rowBounds.top, greaterThanOrEqualTo(viewport.top));
       expect(rowBounds.bottom, lessThanOrEqualTo(viewport.bottom));
+    },
+  );
+
+  testWidgets('entry replacement supersedes an in-flight distant search seek', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(900, 500));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final harnessKey = GlobalKey<_EntriesHarnessState>();
+    final initialEntries = List<LogEntry>.generate(50, (index) {
+      final isMatch = index == 0 || index == 40;
+      return _entry(
+        '12:00:${index.toString().padLeft(2, '0')}',
+        isMatch ? 'row needle' : List.filled(40, 'initial payload ').join(),
+      );
+    });
+    await tester.pumpWidget(
+      MaterialApp(
+        home: _EntriesHarness(key: harnessKey, entries: initialEntries),
+      ),
+    );
+    await _submitKeyword(tester, 'needle');
+
+    final verticalScrollable = tester
+        .stateList<ScrollableState>(
+          find.descendant(
+            of: find.byType(LogTable),
+            matching: find.byType(Scrollable),
+          ),
+        )
+        .singleWhere((state) => state.position.axis == Axis.vertical);
+    await tester.tap(find.byKey(const Key('next_match')));
+    await tester.pump(const Duration(milliseconds: 20));
+    expect(verticalScrollable.position.pixels, greaterThan(0));
+    harnessKey.currentState!.replaceEntries(
+      List<LogEntry>.generate(
+        30,
+        (index) => _entry(
+          '13:00:${index.toString().padLeft(2, '0')}',
+          index == 0
+              ? 'row needle'
+              : List.filled(40, 'replacement payload ').join(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('1/1'), findsOneWidget);
+    final activeRow = find.byKey(
+      const Key('current_search_match_row_13_00_00'),
+    );
+    final viewport = tester.getRect(find.byWidget(verticalScrollable.widget));
+    final rowBounds = tester.getRect(activeRow);
+    expect(rowBounds.top, greaterThanOrEqualTo(viewport.top));
+    expect(rowBounds.bottom, lessThanOrEqualTo(viewport.bottom));
+    expect(verticalScrollable.position.pixels, closeTo(0, 0.1));
+  });
+
+  testWidgets(
+    'entry replacement retains keyword logic and case options for recompute',
+    (tester) async {
+      final harnessKey = GlobalKey<_EntriesHarnessState>();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: _EntriesHarness(
+            key: harnessKey,
+            entries: [
+              _entry('12:00:00', 'timeout ERROR'),
+              _entry('12:00:01', 'timeout error'),
+              _entry('12:00:02', 'database ERROR'),
+            ],
+          ),
+        ),
+      );
+      await _submitKeyword(tester, 'timeout');
+      await _submitKeyword(tester, 'ERROR');
+      final timeoutLogic = find.byKey(const Key('keyword_logic_timeout'));
+      await tester.ensureVisible(timeoutLogic);
+      await tester.tap(timeoutLogic);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('keyword_match_case_ERROR')));
+      await tester.pumpAndSettle();
+
+      harnessKey.currentState!.replaceEntries([
+        _entry('13:00:00', 'timeout error'),
+        _entry('13:00:01', 'database ERROR'),
+        _entry('13:00:02', 'timeout ERROR'),
+      ]);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.descendant(of: timeoutLogic, matching: find.text('OR')),
+        findsOneWidget,
+      );
+      expect(find.text('1/2'), findsOneWidget);
+      expect(
+        find.byKey(const Key('payload_search_highlights_13_00_00')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('current_search_match_row_13_00_01')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('payload_search_highlights_13_00_02')),
+        findsOneWidget,
+      );
     },
   );
 
