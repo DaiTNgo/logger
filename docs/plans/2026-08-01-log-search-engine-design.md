@@ -18,7 +18,10 @@ matching rows, and optionally hides non-matching rows.
 - Keep `All logs` as the default display mode.
 
 Search does not evaluate time, level, ECU, APID, CTID, or other structured DLT
-fields. Existing structured filters apply before keyword search.
+fields. It consumes an already-filtered base log input. The future pipeline is
+DLT source → structured filters → base log input → keyword search → `All logs` /
+`Matches only`. Until a structured-filter engine exists, this branch uses
+`sampleLogs` as its temporary base input.
 
 ## Keyword Semantics
 
@@ -76,9 +79,10 @@ The engine:
 - The display mode (`All logs` or `Matches only`).
 
 Adding or removing a keyword, toggling AND/OR, or toggling match-case recomputes
-the results and selects the first match. Existing structured DLT filters produce
-the base log list first; search evaluates that list. In `All logs`, the full base
-list is rendered. In `Matches only`, only matched rows are rendered.
+the results and selects the first match. Search evaluates the base log list
+supplied by the upstream structured-filter stage; it does not implement that
+stage. In `All logs`, the full base list is rendered. In `Matches only`, only
+matched rows are rendered.
 
 ## UI and Navigation
 
@@ -108,8 +112,9 @@ navigation does not silently overwrite a user's manually selected row.
 - Treat differently cased strings as distinct keyword text.
 - Treat all keyword text literally; regex metacharacters have no special meaning.
 - Reset the active result to the first row whenever the query changes.
-- If the active row disappears after filtering or a data refresh, select the
-  nearest valid result, or no result when the result set is empty.
+- If the active row disappears after the supplied base list changes or a data
+  refresh, select the nearest valid result, or no result when the result set is
+  empty.
 - Clearing all keywords removes dynamic highlights, restores `All logs`, and
   displays the full base log list.
 
@@ -143,4 +148,6 @@ Flutter widget tests cover:
 - Boolean expression parsing, parentheses, precedence, and NOT.
 - Regex, fuzzy matching, stemming, or tokenization.
 - Searching structured DLT columns.
+- Structured DLT filter evaluation. A future engine owns that stage and supplies
+  the base log input consumed by keyword search.
 - Background isolates or indexing for very large data sets.
