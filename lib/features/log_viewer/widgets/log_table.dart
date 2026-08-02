@@ -17,7 +17,7 @@ class LogTable extends StatelessWidget {
     required this.currentSearchEntryIndex,
     required this.verticalController,
     required this.rowKeys,
-    required this.filters,
+    required this.visibleColumnIds,
     required this.activeIndex,
     required this.onRowTap,
   });
@@ -28,7 +28,7 @@ class LogTable extends StatelessWidget {
   final int? currentSearchEntryIndex;
   final ScrollController verticalController;
   final Map<int, GlobalKey> rowKeys;
-  final List<DltFilter> filters;
+  final Set<String> visibleColumnIds;
   final int? activeIndex;
   final ValueChanged<int> onRowTap;
 
@@ -36,12 +36,13 @@ class LogTable extends StatelessWidget {
   Widget build(BuildContext context) {
     final columns = [
       const _LogColumn(label: 'Time', width: 72),
-      for (final filter in filters)
-        _LogColumn(
-          label: definitionFor(filter.fieldId).label,
-          fieldId: filter.fieldId,
-          width: filter.fieldId == 'ctid' ? 128 : 96,
-        ),
+      for (final definition in dltFilterDefinitions)
+        if (visibleColumnIds.contains(definition.id))
+          _LogColumn(
+            label: definition.label,
+            fieldId: definition.id,
+            width: definition.id == 'ctid' ? 128 : 96,
+          ),
       const _LogColumn(label: 'Payload', width: 480, isPayload: true),
     ];
     final fixedWidth = columns

@@ -139,9 +139,7 @@ void main() {
     semantics.dispose();
   });
 
-  testWidgets('shows headers for active DLT filters plus fixed columns', (
-    tester,
-  ) async {
+  testWidgets('shows fixed and default View columns', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1600, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(const MyApp());
@@ -203,9 +201,29 @@ void main() {
     );
   });
 
-  testWidgets('adding and removing a filter shows and hides its column', (
+  testWidgets('View toggles a table column without adding a filter', (
     tester,
   ) async {
+    await tester.binding.setSurfaceSize(const Size(1600, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(const MyApp());
+
+    await openViewMenu(tester);
+    await tester.tap(find.byKey(const Key('view_column_option_trace_type')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('dlt_column_header_Trace Type')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('dlt_filter_trace_type')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('view_column_option_trace_type')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('dlt_column_header_Trace Type')), findsNothing);
+  });
+
+  testWidgets('filter changes do not change View columns', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1600, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(const MyApp());
@@ -213,38 +231,104 @@ void main() {
     await openFilterMenu(tester);
     await tester.tap(find.byKey(const Key('add_filter_trace_type')));
     await tester.pumpAndSettle();
+    expect(find.byKey(const Key('dlt_filter_trace_type')), findsOneWidget);
+    expect(find.byKey(const Key('dlt_column_header_Trace Type')), findsNothing);
+
+    await tester.tap(find.text('Clear all'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('dlt_column_header_ECU ID')), findsOneWidget);
+    expect(find.byKey(const Key('dlt_column_header_Time')), findsOneWidget);
+    expect(find.byKey(const Key('dlt_column_header_Payload')), findsOneWidget);
+  });
+
+  testWidgets('View keeps DLT columns in definition order', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1800, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(const MyApp());
+
+    await openViewMenu(tester);
+    await tester.tap(find.byKey(const Key('view_column_option_network_type')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('view_column_option_trace_type')));
+    await tester.pumpAndSettle();
+
+    final traceX = tester
+        .getTopLeft(find.byKey(const Key('dlt_column_header_Trace Type')))
+        .dx;
+    final networkX = tester
+        .getTopLeft(find.byKey(const Key('dlt_column_header_Network Type')))
+        .dx;
+    expect(traceX, lessThan(networkX));
+  });
+
+  testWidgets('visible column without metadata renders a dash', (tester) async {
+    final controller = ScrollController();
+    addTearDown(controller.dispose);
+    final rowKey = GlobalKey();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 240,
+            child: LogTable(
+              entries: const [
+                LogEntry(
+                  time: '12:00:00',
+                  level: LogLevel.info,
+                  message: 'payload',
+                ),
+              ],
+              visibleEntryIndexes: const [0],
+              matchRangesByEntryIndex: const {},
+              currentSearchEntryIndex: null,
+              verticalController: controller,
+              rowKeys: {0: rowKey},
+              visibleColumnIds: const {'trace_type'},
+              activeIndex: null,
+              onRowTap: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('—'), findsOneWidget);
+  });
+
+  testWidgets('View changes preserve keyword search state', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1600, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(const MyApp());
+    await tester.enterText(find.byKey(const Key('keyword_input')), 'timeout');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+
+    expect(find.text('1/2'), findsOneWidget);
     expect(
-      find.byKey(const Key('dlt_column_header_Trace Type')),
+      find.byKey(const Key('payload_search_highlights_10_48_33')),
       findsOneWidget,
     );
 
-    final filterScroll = find
-        .descendant(
-          of: find.byKey(const Key('filter_strip')),
-          matching: find.byType(Scrollable),
-        )
-        .first;
-    final removeButton = find.byKey(const Key('remove_filter_trace_type'));
-    await tester.dragUntilVisible(
-      removeButton,
-      filterScroll,
-      const Offset(-200, 0),
-    );
-    await tester.tap(removeButton);
+    await openViewMenu(tester);
+    await tester.tap(find.byKey(const Key('view_column_option_trace_type')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('dlt_column_header_Trace Type')), findsNothing);
+
+    expect(find.text('1/2'), findsOneWidget);
+    expect(
+      find.byKey(const Key('payload_search_highlights_10_48_33')),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('clearing filters retains Time and Payload columns', (
-    tester,
-  ) async {
+  testWidgets('clearing filters retains default View columns', (tester) async {
     await tester.pumpWidget(const MyApp());
     await tester.tap(find.text('Clear all'));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('dlt_column_header_Time')), findsOneWidget);
     expect(find.byKey(const Key('dlt_column_header_Payload')), findsOneWidget);
-    expect(find.byKey(const Key('dlt_column_header_ECU ID')), findsNothing);
+    expect(find.byKey(const Key('dlt_column_header_ECU ID')), findsOneWidget);
   });
 
   testWidgets('renders every supplied log message and initial filter value', (
@@ -1191,7 +1275,7 @@ void main() {
     await tester.tap(find.text('Clear all'));
     await tester.pump();
 
-    expect(find.text('ECU_MAIN'), findsNothing);
+    expect(find.byKey(const Key('dlt_filter_ecu_id')), findsNothing);
     expect(find.text('Add filter'), findsOneWidget);
   });
 

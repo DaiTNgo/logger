@@ -383,7 +383,7 @@ class _LogViewerPageState extends State<LogViewerPage> {
                       currentSearchEntryIndex: currentSearchEntryIndex,
                       verticalController: _logScrollController,
                       rowKeys: _rowKeys,
-                      filters: _filters,
+                      visibleColumnIds: _visibleColumnIds,
                       activeIndex: _activeLogIndex,
                       onRowTap: (index) =>
                           setState(() => _activeLogIndex = index),
