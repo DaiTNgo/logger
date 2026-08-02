@@ -186,7 +186,14 @@ class _LogMessage extends StatelessWidget {
       color: AppColors.text,
       fontSize: 12,
     );
-    if (matchRanges.isEmpty) return Text(entry.message, style: baseStyle);
+    if (matchRanges.isEmpty) {
+      return Text(
+        entry.message,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: baseStyle,
+      );
+    }
     final spans = <InlineSpan>[];
     var cursor = 0;
     for (final range in matchRanges) {
@@ -210,10 +217,16 @@ class _LogMessage extends StatelessWidget {
     if (cursor < entry.message.length) {
       spans.add(TextSpan(text: entry.message.substring(cursor)));
     }
-    return RichText(
-      key: Key('payload_search_highlights_${entry.time.replaceAll(':', '_')}'),
-      textScaler: MediaQuery.textScalerOf(context),
-      text: TextSpan(style: baseStyle, children: spans),
+    return ClipRect(
+      child: RichText(
+        key: Key(
+          'payload_search_highlights_${entry.time.replaceAll(':', '_')}',
+        ),
+        textScaler: MediaQuery.textScalerOf(context),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        text: TextSpan(style: baseStyle, children: spans),
+      ),
     );
   }
 }

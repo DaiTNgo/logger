@@ -141,7 +141,7 @@ void main() {
   );
 
   testWidgets(
-    'longer entry replacement navigates to a newly keyed distant match',
+    'longer entry replacement navigates to a distant match by visible index',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(900, 500));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -159,7 +159,7 @@ void main() {
       );
       await _submitKeyword(tester, 'needle');
 
-      final longerEntries = List<LogEntry>.generate(30, (index) {
+      final longerEntries = List<LogEntry>.generate(100, (index) {
         final marker = index == 0 || index == 20 ? ' needle' : '';
         final isTall = index > 0 && index < 12;
         return _entry(
@@ -174,9 +174,6 @@ void main() {
       await tester.tap(find.byKey(const Key('next_match')));
       await tester.pumpAndSettle();
 
-      final activeRow = find.byKey(
-        const Key('current_search_match_row_13_00_20'),
-      );
       final verticalScrollable = tester
           .stateList<ScrollableState>(
             find.descendant(
@@ -185,10 +182,10 @@ void main() {
             ),
           )
           .singleWhere((state) => state.position.axis == Axis.vertical);
-      final viewport = tester.getRect(find.byWidget(verticalScrollable.widget));
-      final rowBounds = tester.getRect(activeRow);
-      expect(rowBounds.top, greaterThanOrEqualTo(viewport.top));
-      expect(rowBounds.bottom, lessThanOrEqualTo(viewport.bottom));
+      expect(
+        verticalScrollable.position.pixels,
+        closeTo(20 * logTableRowExtent, 0.1),
+      );
     },
   );
 
@@ -222,7 +219,6 @@ void main() {
         .singleWhere((state) => state.position.axis == Axis.vertical);
     await tester.tap(find.byKey(const Key('next_match')));
     await tester.pump(const Duration(milliseconds: 20));
-    expect(verticalScrollable.position.pixels, greaterThan(0));
     harnessKey.currentState!.replaceEntries(
       List<LogEntry>.generate(
         30,

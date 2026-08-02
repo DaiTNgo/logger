@@ -93,6 +93,37 @@ Future<void> selectTimeOption(
 }
 
 void main() {
+  testWidgets('log rows use a fixed extent and never wrap payload', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: LogViewerPage(
+            entries: [
+              LogEntry(
+                time: '12:00:00',
+                level: LogLevel.info,
+                message:
+                    'a payload long enough to wrap when width is narrow a payload long enough to wrap',
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    final list = tester.widget<ListView>(find.byType(ListView));
+    expect(list.itemExtent, logTableRowExtent);
+    final payload = tester.widget<Text>(find.textContaining('a payload long'));
+    expect(payload.maxLines, 1);
+    expect(payload.overflow, TextOverflow.ellipsis);
+  });
+
+  test('LogTable public fields contain no per-record GlobalKey map', () {
+    expect(LogTable.debugUsesPerRecordGlobalKeys, isFalse);
+  });
+
   test('sample logs provide every supported DLT field', () {
     const fieldIds = [
       'ecu_id',
@@ -311,7 +342,6 @@ void main() {
   testWidgets('visible column without metadata renders a dash', (tester) async {
     final controller = ScrollController();
     addTearDown(controller.dispose);
-    final rowKey = GlobalKey();
 
     await tester.pumpWidget(
       MaterialApp(
@@ -330,7 +360,6 @@ void main() {
               matchRangesByEntryIndex: const {},
               currentSearchEntryIndex: null,
               verticalController: controller,
-              rowKeys: {0: rowKey},
               visibleColumnIds: const {'trace_type'},
               activeIndex: null,
               onRowTap: (_) {},

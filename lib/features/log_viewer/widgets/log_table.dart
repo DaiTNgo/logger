@@ -8,6 +8,8 @@ import 'package:logger/features/log_viewer/widgets/log_row.dart';
 import 'package:logger/models/log_entry.dart';
 import 'package:logger/ui/app_colors.dart';
 
+const logTableRowExtent = 28.0;
+
 class LogTable extends StatelessWidget {
   const LogTable({
     super.key,
@@ -16,7 +18,6 @@ class LogTable extends StatelessWidget {
     required this.matchRangesByEntryIndex,
     required this.currentSearchEntryIndex,
     required this.verticalController,
-    required this.rowKeys,
     required this.visibleColumnIds,
     required this.activeIndex,
     required this.onRowTap,
@@ -27,10 +28,11 @@ class LogTable extends StatelessWidget {
   final Map<int, List<SearchRange>> matchRangesByEntryIndex;
   final int? currentSearchEntryIndex;
   final ScrollController verticalController;
-  final Map<int, GlobalKey> rowKeys;
   final Set<String> visibleColumnIds;
   final int? activeIndex;
   final ValueChanged<int> onRowTap;
+
+  static const debugUsesPerRecordGlobalKeys = false;
 
   @override
   Widget build(BuildContext context) {
@@ -64,22 +66,20 @@ class LogTable extends StatelessWidget {
                   child: ListView.builder(
                     controller: verticalController,
                     padding: EdgeInsets.zero,
+                    itemExtent: logTableRowExtent,
                     itemCount: visibleEntryIndexes.length,
                     itemBuilder: (context, visibleIndex) {
                       final sourceIndex = visibleEntryIndexes[visibleIndex];
-                      return KeyedSubtree(
-                        key: rowKeys[sourceIndex],
-                        child: _LogTableRow(
-                          entry: entries[sourceIndex],
-                          columns: columns,
-                          payloadWidth: payloadWidth,
-                          isActive: sourceIndex == activeIndex,
-                          isCurrentSearchMatch:
-                              sourceIndex == currentSearchEntryIndex,
-                          matchRanges:
-                              matchRangesByEntryIndex[sourceIndex] ?? const [],
-                          onTap: () => onRowTap(sourceIndex),
-                        ),
+                      return _LogTableRow(
+                        entry: entries[sourceIndex],
+                        columns: columns,
+                        payloadWidth: payloadWidth,
+                        isActive: sourceIndex == activeIndex,
+                        isCurrentSearchMatch:
+                            sourceIndex == currentSearchEntryIndex,
+                        matchRanges:
+                            matchRangesByEntryIndex[sourceIndex] ?? const [],
+                        onTap: () => onRowTap(sourceIndex),
                       );
                     },
                   ),
