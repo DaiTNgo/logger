@@ -189,8 +189,7 @@ class _LogMessage extends StatelessWidget {
     if (matchRanges.isEmpty) {
       return Text(
         entry.message,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+        softWrap: false,
         style: baseStyle,
       );
     }
@@ -223,8 +222,7 @@ class _LogMessage extends StatelessWidget {
           'payload_search_highlights_${entry.time.replaceAll(':', '_')}',
         ),
         textScaler: MediaQuery.textScalerOf(context),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+        softWrap: false,
         text: TextSpan(style: baseStyle, children: spans),
       ),
     );

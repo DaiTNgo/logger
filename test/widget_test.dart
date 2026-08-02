@@ -93,7 +93,7 @@ Future<void> selectTimeOption(
 }
 
 void main() {
-  testWidgets('log rows use a fixed extent and never wrap payload', (
+  testWidgets('log rows use a fixed extent and payload text is never truncated', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -116,8 +116,19 @@ void main() {
     final list = tester.widget<ListView>(find.byType(ListView));
     expect(list.itemExtent, logTableRowExtent);
     final payload = tester.widget<Text>(find.textContaining('a payload long'));
-    expect(payload.maxLines, 1);
-    expect(payload.overflow, TextOverflow.ellipsis);
+    expect(payload.maxLines, isNull);
+    expect(payload.softWrap, isFalse);
+    expect(payload.overflow, isNull);
+
+    final horizontalScrollable = tester.state<ScrollableState>(
+      find
+          .descendant(
+            of: find.byKey(const Key('log_table_horizontal_scroll')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    expect(horizontalScrollable.position.maxScrollExtent, greaterThan(0));
   });
 
   test('LogTable public fields contain no per-record GlobalKey map', () {
@@ -413,12 +424,17 @@ void main() {
     final semantics = tester.ensureSemantics();
     await tester.pumpWidget(const MyApp());
 
-    final logScroll = find.byType(Scrollable).last;
+    final logScroll = find
+        .descendant(
+          of: find.byKey(const Key('log_table_vertical_list')),
+          matching: find.byType(Scrollable),
+        )
+        .first;
     for (final message in const [
       'System initialization complete. Module [core] started successfully in 142ms.',
       'Network listener bound to 0.0.0.0:8080. Awaiting connections.',
       'High memory usage detected in worker pool. Current utilization: 85%. Consider scaling.',
-      'Connection timeout while attempting to reach database replica at 192.168.1.5:5432. Retrying in 5s...',
+      'Connection timeout while attempting to reach database replica at 192.168.1.5:5432. Retrying in 5s hflsdfj áldkfj ládkfjlsdakjflsdk',
       'Retry 1/3: Attempting connection to secondary replica.',
       "Failed to resolve host 'db-replica-sec.internal'. DNS query timeout after 5000ms.",
       'User session terminated gracefully. [UID: 9482-A]',
@@ -1153,7 +1169,12 @@ void main() {
     'next match moves the active search row without moving selection',
     (tester) async {
       await tester.pumpWidget(const MyApp());
-      await tester.tap(find.byKey(const Key('log_row_10_42_01')));
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const Key('log_row_10_42_01')),
+          matching: find.text('10:42:01'),
+        ),
+      );
       await tester.pump();
       await tester.enterText(find.byKey(const Key('keyword_input')), 'timeout');
       await tester.testTextInput.receiveAction(TextInputAction.done);
@@ -1181,13 +1202,14 @@ void main() {
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle();
 
-      final tableScrollables = find.descendant(
-        of: find.byType(LogTable),
-        matching: find.byType(Scrollable),
+      final horizontalScrollable = tester.state<ScrollableState>(
+        find
+            .descendant(
+              of: find.byKey(const Key('log_table_horizontal_scroll')),
+              matching: find.byType(Scrollable),
+            )
+            .first,
       );
-      final horizontalScrollable = tester
-          .stateList<ScrollableState>(tableScrollables)
-          .singleWhere((state) => state.position.axis == Axis.horizontal);
       horizontalScrollable.position.jumpTo(200);
       await tester.pump();
       final horizontalOffsetBefore = horizontalScrollable.position.pixels;
@@ -1381,7 +1403,12 @@ void main() {
       await tester.scrollUntilVisible(
         find.byKey(const Key('active_log_row')),
         200,
-        scrollable: find.byType(Scrollable).last,
+        scrollable: find
+            .descendant(
+              of: find.byKey(const Key('log_table_vertical_list')),
+              matching: find.byType(Scrollable),
+            )
+            .first,
       );
       expect(find.byKey(const Key('active_log_row')), findsOneWidget);
       expect(find.text('Explorer'), findsOneWidget);
@@ -1559,7 +1586,7 @@ void main() {
     final timestamp = find.descendant(of: row, matching: find.text('10:42:01'));
     final timestampBeforeTap = tester.getTopLeft(timestamp);
 
-    await tester.tap(row);
+    await tester.tap(timestamp);
     await tester.pump();
 
     expect(tester.getTopLeft(timestamp), timestampBeforeTap);
@@ -1570,7 +1597,12 @@ void main() {
   ) async {
     await tester.pumpWidget(const MyApp());
 
-    await tester.tap(find.byKey(const Key('log_row_10_42_01')));
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('log_row_10_42_01')),
+        matching: find.text('10:42:01'),
+      ),
+    );
     await tester.pump();
 
     expect(find.byKey(const Key('active_log_row_10_42_01')), findsOneWidget);

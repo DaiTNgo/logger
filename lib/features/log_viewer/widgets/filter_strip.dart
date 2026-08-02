@@ -750,7 +750,7 @@ class _DateTimeSection extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              overflow: TextOverflow.ellipsis,
+              softWrap: false,
               style: const TextStyle(
                 color: AppColors.secondaryText,
                 fontSize: 12,

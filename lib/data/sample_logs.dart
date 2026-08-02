@@ -70,7 +70,7 @@ const sampleLogs = <LogEntry>[
     time: '10:48:33',
     level: LogLevel.error,
     message:
-        'Connection timeout while attempting to reach database replica at 192.168.1.5:5432. Retrying in 5s...',
+        'Connection timeout while attempting to reach database replica at 192.168.1.5:5432. Retrying in 5s hflsdfj áldkfj ládkfjlsdakjflsdk',
     dltValues: {
       'ecu_id': 'ECU_BACKUP',
       'apid': 'TELE',

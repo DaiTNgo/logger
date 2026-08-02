@@ -316,7 +316,7 @@ class _SchemaMappingDialogState extends State<SchemaMappingDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(widget.path, maxLines: 1, overflow: TextOverflow.ellipsis),
+              Text(widget.path),
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -481,8 +481,6 @@ class _SchemaPreviewTable extends StatelessWidget {
                               fieldId == 'message'
                                   ? record.message
                                   : record.metadata[fieldId] ?? '',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                       ],
