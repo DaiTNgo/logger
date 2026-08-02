@@ -33,6 +33,13 @@ class _LogViewerPageState extends State<LogViewerPage> {
     const DltFilter(fieldId: 'log_level', values: ['Error', 'Fatal']),
     const DltFilter(fieldId: 'message_type', values: ['Log']),
   ];
+  final _visibleColumnIds = <String>{
+    'ecu_id',
+    'apid',
+    'ctid',
+    'log_level',
+    'message_type',
+  };
   var _matches = <LogSearchMatch>[];
   var _activeMatchIndex = 0;
   var _displayMode = SearchDisplayMode.allLogs;
@@ -288,6 +295,12 @@ class _LogViewerPageState extends State<LogViewerPage> {
     () => _filters.removeWhere((filter) => filter.fieldId == fieldId),
   );
 
+  void _toggleVisibleColumn(String fieldId) => setState(() {
+    if (!_visibleColumnIds.add(fieldId)) {
+      _visibleColumnIds.remove(fieldId);
+    }
+  });
+
   void _addOrFocusFilter(String fieldId) {
     if (_filters.any((filter) => filter.fieldId == fieldId)) return;
     setState(() => _filters.add(DltFilter(fieldId: fieldId)));
@@ -346,6 +359,8 @@ class _LogViewerPageState extends State<LogViewerPage> {
             ),
             FilterStrip(
               filters: _filters,
+              visibleColumnIds: _visibleColumnIds,
+              onToggleVisibleColumn: _toggleVisibleColumn,
               onSelectField: _addOrFocusFilter,
               onUpdateFilter: _updateFilter,
               onRemoveFilter: _removeFilter,

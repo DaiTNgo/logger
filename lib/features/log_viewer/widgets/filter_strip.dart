@@ -6,6 +6,8 @@ class FilterStrip extends StatelessWidget {
   const FilterStrip({
     super.key,
     required this.filters,
+    required this.visibleColumnIds,
+    required this.onToggleVisibleColumn,
     required this.onSelectField,
     required this.onUpdateFilter,
     required this.onRemoveFilter,
@@ -13,6 +15,8 @@ class FilterStrip extends StatelessWidget {
   });
 
   final List<DltFilter> filters;
+  final Set<String> visibleColumnIds;
+  final ValueChanged<String> onToggleVisibleColumn;
   final ValueChanged<String> onSelectField;
   final ValueChanged<DltFilter> onUpdateFilter;
   final ValueChanged<String> onRemoveFilter;
@@ -59,6 +63,33 @@ class FilterStrip extends StatelessWidget {
                     ),
                     child: const Text(
                       'Add filter',
+                      style: TextStyle(
+                        color: AppColors.text,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Builder(
+                  builder: (buttonContext) => OutlinedButton(
+                    key: const Key('view_columns_button'),
+                    onPressed: () => _showViewMenu(buttonContext),
+                    style: const ButtonStyle(
+                      minimumSize: WidgetStatePropertyAll(Size(0, 28)),
+                      padding: WidgetStatePropertyAll(
+                        EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      ),
+                      side: WidgetStatePropertyAll(
+                        BorderSide(color: AppColors.border),
+                      ),
+                      shape: WidgetStatePropertyAll(RoundedRectangleBorder()),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    child: const Text(
+                      'View',
                       style: TextStyle(
                         color: AppColors.text,
                         fontSize: 12,
@@ -115,6 +146,48 @@ class FilterStrip extends StatelessWidget {
     );
     if (fieldId != null) onSelectField(fieldId);
   }
+
+  void _showViewMenu(BuildContext context) => _showDropdown(
+    anchorContext: context,
+    dropdownKey: const Key('view_columns_dropdown'),
+    childBuilder: (_) => SizedBox(
+      width: 320,
+      child: StatefulBuilder(
+        builder: (context, setDropdownState) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final definition in dltFilterDefinitions)
+              InkWell(
+                key: Key('view_column_option_${definition.id}'),
+                onTap: () => setDropdownState(
+                  () => onToggleVisibleColumn(definition.id),
+                ),
+                child: SizedBox(
+                  height: 40,
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 32,
+                        child: visibleColumnIds.contains(definition.id)
+                            ? Icon(
+                                Icons.check,
+                                key: Key(
+                                  'view_column_selected_${definition.id}',
+                                ),
+                              )
+                            : null,
+                      ),
+                      Text(definition.label),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _DltFilterChip extends StatelessWidget {

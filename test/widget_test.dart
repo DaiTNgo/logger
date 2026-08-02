@@ -21,6 +21,19 @@ Future<void> openFilterMenu(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> openViewMenu(WidgetTester tester) async {
+  final button = find.byKey(const Key('view_columns_button'));
+  final filterScroll = find
+      .descendant(
+        of: find.byKey(const Key('filter_strip')),
+        matching: find.byType(Scrollable),
+      )
+      .first;
+  await tester.dragUntilVisible(button, filterScroll, const Offset(-200, 0));
+  await tester.tap(button);
+  await tester.pumpAndSettle();
+}
+
 Future<void> openTimeRangeFilter(WidgetTester tester) async {
   await tester.binding.setSurfaceSize(const Size(1600, 700));
   addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -145,6 +158,49 @@ void main() {
       expect(find.byKey(Key('dlt_column_header_$label')), findsOneWidget);
     }
     expect(find.byKey(const Key('dlt_column_header_Trace Type')), findsNothing);
+  });
+
+  testWidgets('View dropdown toggles DLT column selections', (tester) async {
+    final visibleColumnIds = <String>{'ecu_id'};
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StatefulBuilder(
+          builder: (context, setState) => Scaffold(
+            body: FilterStrip(
+              filters: const [],
+              visibleColumnIds: visibleColumnIds,
+              onToggleVisibleColumn: (fieldId) => setState(() {
+                if (!visibleColumnIds.add(fieldId)) {
+                  visibleColumnIds.remove(fieldId);
+                }
+              }),
+              onSelectField: (_) {},
+              onUpdateFilter: (_) {},
+              onRemoveFilter: (_) {},
+              onClearFilters: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await openViewMenu(tester);
+    expect(find.byKey(const Key('view_columns_dropdown')), findsOneWidget);
+    expect(
+      find.byKey(const Key('view_column_selected_ecu_id')),
+      findsOneWidget,
+    );
+    expect(find.text('Time'), findsNothing);
+    expect(find.text('Payload'), findsNothing);
+
+    await tester.tap(find.byKey(const Key('view_column_option_trace_type')));
+    await tester.pumpAndSettle();
+    expect(visibleColumnIds, contains('trace_type'));
+    expect(
+      find.byKey(const Key('view_column_selected_trace_type')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('adding and removing a filter shows and hides its column', (
@@ -844,6 +900,8 @@ void main() {
             alignment: Alignment.bottomCenter,
             child: FilterStrip(
               filters: const [DltFilter(fieldId: 'verbose_mode')],
+              visibleColumnIds: const {},
+              onToggleVisibleColumn: (_) {},
               onSelectField: (_) {},
               onUpdateFilter: (_) {},
               onRemoveFilter: (_) {},
