@@ -192,10 +192,38 @@ bool _hasNamedMessageGroup(String? expression) {
   }
   try {
     RegExp(expression);
-    return RegExp(r'(?<!\\)\(\?<message>').hasMatch(expression);
+    return _containsNamedMessageGroup(expression);
   } on FormatException {
     return false;
   }
+}
+
+bool _containsNamedMessageGroup(String expression) {
+  var inCharacterClass = false;
+
+  for (var index = 0; index < expression.length; index++) {
+    final character = expression[index];
+    if (character == r'\') {
+      index++;
+      continue;
+    }
+    if (inCharacterClass) {
+      if (character == ']') {
+        inCharacterClass = false;
+      }
+      continue;
+    }
+    if (character == '[') {
+      inCharacterClass = true;
+      continue;
+    }
+    if (character != '(' || !expression.startsWith('?<message>', index + 1)) {
+      continue;
+    }
+    return true;
+  }
+
+  return false;
 }
 
 bool _sameMappings(List<LogFieldMapping> left, List<LogFieldMapping> right) {

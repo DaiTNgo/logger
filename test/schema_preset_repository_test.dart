@@ -58,6 +58,32 @@ void main() {
     );
   });
 
+  test('schema recognizes a message group after an escaped backslash', () {
+    expect(
+      () => LogSchema(
+        id: 'escaped-backslash',
+        name: 'Escaped backslash',
+        parserType: LogParserType.regex,
+        regularExpression: r'\\(?<message>.*)',
+        mappings: [LogFieldMapping(source: 'message', fieldId: 'message')],
+      ),
+      returnsNormally,
+    );
+  });
+
+  test('schema ignores a message-group lookalike inside a character class', () {
+    expect(
+      () => LogSchema(
+        id: 'character-class',
+        name: 'Character class',
+        parserType: LogParserType.regex,
+        regularExpression: r'[(?<message>]',
+        mappings: [LogFieldMapping(source: 'message', fieldId: 'message')],
+      ),
+      throwsArgumentError,
+    );
+  });
+
   test(
     'repository saves sorted presets and replaces duplicate schema IDs',
     () async {
