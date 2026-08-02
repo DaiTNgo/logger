@@ -34,6 +34,35 @@ void main() {
     expect(index.locatorAt(2), const RecordLocator(offset: 20, length: 10));
   });
 
+  test('metadata view exposes stored fields and can be appended', () {
+    final sourceIndex = ChunkedRecordIndex();
+    sourceIndex.append(
+      const RecordLocator(offset: 0, length: 1),
+      metadata: const IndexedMetadata({'apid': 'CORE', 'ctid': 'CTRL'}),
+    );
+
+    final metadata = sourceIndex.metadataAt(0);
+    expect(metadata.values, {'apid': 'CORE', 'ctid': 'CTRL'});
+
+    final destinationIndex = ChunkedRecordIndex();
+    destinationIndex.append(
+      const RecordLocator(offset: 1, length: 1),
+      metadata: metadata,
+    );
+    expect(destinationIndex.metadataAt(0).values, {
+      'apid': 'CORE',
+      'ctid': 'CTRL',
+    });
+  });
+
+  test('source and index reject nonpositive capacities at runtime', () {
+    expect(() => ChunkedRecordIndex(chunkCapacity: 0), throwsArgumentError);
+    expect(
+      () => LocalFileLogSource('unused.bin', chunkSize: 0),
+      throwsArgumentError,
+    );
+  });
+
   test('local file source streams chunks and supports independent range reads',
       () async {
     final file = File('${Directory.systemTemp.path}/logger-source-test.bin');

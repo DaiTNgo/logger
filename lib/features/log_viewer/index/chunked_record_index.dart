@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:typed_data';
 
 /// The byte location of one record in its [LogSource] payload.
@@ -41,7 +42,8 @@ final class RecordFlags {
 
 /// A compact, chunked index of record locations and dictionary-coded metadata.
 final class ChunkedRecordIndex {
-  ChunkedRecordIndex({this.chunkCapacity = 4096}) : assert(chunkCapacity > 0);
+  ChunkedRecordIndex({int chunkCapacity = 4096})
+      : chunkCapacity = _validateCapacity(chunkCapacity);
 
   final int chunkCapacity;
   final List<_RecordChunk> _chunks = [];
@@ -49,6 +51,13 @@ final class ChunkedRecordIndex {
   int _length = 0;
 
   int get length => _length;
+
+  static int _validateCapacity(int capacity) {
+    if (capacity <= 0) {
+      throw ArgumentError.value(capacity, 'chunkCapacity', 'Must be positive');
+    }
+    return capacity;
+  }
 
   void append(
     RecordLocator locator, {
@@ -158,8 +167,39 @@ final class _MetadataView implements IndexedMetadata {
   final int _recordIndex;
 
   @override
-  Map<String, String> get values => const {};
+  Map<String, String> get values => _MetadataValuesView(_index, _recordIndex);
 
   @override
   String? value(String fieldId) => _index._metadataValueAt(_recordIndex, fieldId);
+}
+
+final class _MetadataValuesView extends MapBase<String, String> {
+  _MetadataValuesView(this._index, this._recordIndex);
+
+  final ChunkedRecordIndex _index;
+  final int _recordIndex;
+
+  @override
+  String? operator [](Object? key) =>
+      key is String ? _index._metadataValueAt(_recordIndex, key) : null;
+
+  @override
+  Iterable<String> get keys => _index._metadataColumns.keys.where(
+        (fieldId) => _index._metadataValueAt(_recordIndex, fieldId) != null,
+      );
+
+  @override
+  void operator []=(String key, String value) {
+    throw UnsupportedError('Indexed metadata views are read-only.');
+  }
+
+  @override
+  String? remove(Object? key) {
+    throw UnsupportedError('Indexed metadata views are read-only.');
+  }
+
+  @override
+  void clear() {
+    throw UnsupportedError('Indexed metadata views are read-only.');
+  }
 }

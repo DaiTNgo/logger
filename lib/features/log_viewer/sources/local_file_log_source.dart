@@ -5,12 +5,19 @@ import 'log_source.dart';
 
 /// A [LogSource] backed by an on-disk file.
 final class LocalFileLogSource implements LogSource {
-  LocalFileLogSource(this.path, {this.chunkSize = 64 * 1024})
-      : assert(chunkSize > 0);
+  LocalFileLogSource(this.path, {int chunkSize = 64 * 1024})
+      : chunkSize = _validateChunkSize(chunkSize);
 
   final String path;
   final int chunkSize;
   bool _isClosed = false;
+
+  static int _validateChunkSize(int chunkSize) {
+    if (chunkSize <= 0) {
+      throw ArgumentError.value(chunkSize, 'chunkSize', 'Must be positive');
+    }
+    return chunkSize;
+  }
 
   @override
   String get id => path;
@@ -34,7 +41,7 @@ final class LocalFileLogSource implements LogSource {
       while (true) {
         final bytes = await handle.read(chunkSize);
         if (bytes.isEmpty) return;
-        yield Uint8List.fromList(bytes);
+        yield bytes;
       }
     } finally {
       await handle.close();
@@ -57,7 +64,7 @@ final class LocalFileLogSource implements LogSource {
     final handle = await File(path).open();
     try {
       await handle.setPosition(offset);
-      return Uint8List.fromList(await handle.read(length));
+      return await handle.read(length);
     } finally {
       await handle.close();
     }
