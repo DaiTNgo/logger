@@ -199,6 +199,16 @@ void main() {
       find.byKey(const Key('view_column_selected_trace_type')),
       findsOneWidget,
     );
+
+    await tester.tapAt(const Offset(10, 500));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('view_columns_dropdown')), findsNothing);
+
+    await openViewMenu(tester);
+    expect(
+      find.byKey(const Key('view_column_selected_trace_type')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('View toggles a table column without adding a filter', (
@@ -207,6 +217,12 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1600, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(const MyApp());
+
+    final traceCells = find.descendant(
+      of: find.byType(LogTable),
+      matching: find.text('Function In'),
+    );
+    expect(traceCells, findsNothing);
 
     await openViewMenu(tester);
     await tester.tap(find.byKey(const Key('view_column_option_trace_type')));
@@ -217,10 +233,12 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const Key('dlt_filter_trace_type')), findsNothing);
+    expect(traceCells, findsWidgets);
 
     await tester.tap(find.byKey(const Key('view_column_option_trace_type')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('dlt_column_header_Trace Type')), findsNothing);
+    expect(traceCells, findsNothing);
   });
 
   testWidgets('filter changes do not change View columns', (tester) async {
@@ -239,6 +257,35 @@ void main() {
     expect(find.byKey(const Key('dlt_column_header_ECU ID')), findsOneWidget);
     expect(find.byKey(const Key('dlt_column_header_Time')), findsOneWidget);
     expect(find.byKey(const Key('dlt_column_header_Payload')), findsOneWidget);
+  });
+
+  testWidgets('editing and removing filters leaves View unchanged', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1600, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(const MyApp());
+
+    await tester.tap(find.byKey(const Key('filter_value_ecu_id')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('filter_option_ecu_id_1')));
+    await tester.tapAt(const Offset(10, 500));
+    await tester.pumpAndSettle();
+
+    expect(find.text('ECU_MAIN, ECU_BACKUP'), findsOneWidget);
+    expect(find.byKey(const Key('dlt_column_header_ECU ID')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('remove_filter_ecu_id')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('dlt_filter_ecu_id')), findsNothing);
+    expect(find.byKey(const Key('dlt_column_header_ECU ID')), findsOneWidget);
+
+    await openViewMenu(tester);
+    expect(
+      find.byKey(const Key('view_column_selected_ecu_id')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('View keeps DLT columns in definition order', (tester) async {
