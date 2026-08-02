@@ -3,17 +3,26 @@ import 'package:logger/data/sample_logs.dart';
 import 'package:logger/features/log_viewer/models/dlt_filter.dart';
 import 'package:logger/features/log_viewer/models/log_search.dart';
 import 'package:logger/features/log_viewer/services/log_search_engine.dart';
+import 'package:logger/features/log_viewer/services/schema_preset_repository.dart';
 import 'package:logger/features/log_viewer/widgets/bottom_navigation.dart';
 import 'package:logger/features/log_viewer/widgets/filter_strip.dart';
 import 'package:logger/features/log_viewer/widgets/log_table.dart';
 import 'package:logger/features/log_viewer/widgets/log_viewer_header.dart';
 import 'package:logger/features/log_viewer/widgets/search_panel.dart';
+import 'package:logger/features/log_viewer/widgets/schema_mapping_dialog.dart';
 import 'package:logger/models/log_entry.dart';
 
 class LogViewerPage extends StatefulWidget {
-  const LogViewerPage({super.key, this.entries = sampleLogs});
+  const LogViewerPage({
+    super.key,
+    this.entries = sampleLogs,
+    this.filePicker = const FileSelectorLogFilePicker(),
+    this.schemaPresetRepository,
+  });
 
   final List<LogEntry> entries;
+  final LogFilePicker filePicker;
+  final SchemaPresetRepository? schemaPresetRepository;
 
   @override
   State<LogViewerPage> createState() => _LogViewerPageState();
@@ -21,6 +30,9 @@ class LogViewerPage extends StatefulWidget {
 
 class _LogViewerPageState extends State<LogViewerPage> {
   final _searchEngine = const LogSearchEngine();
+  late final _defaultSchemaPresetRepository = SchemaPresetRepository(
+    ResilientSharedPreferencesStringStore(),
+  );
   final _keywords = <SearchKeyword>[];
   final _keywordController = TextEditingController();
   final _logScrollController = ScrollController();
@@ -44,6 +56,7 @@ class _LogViewerPageState extends State<LogViewerPage> {
   var _scrollGeneration = 0;
   var _activeDestination = 0;
   int? _activeLogIndex;
+  ConfirmedLogImport? _confirmedImport;
 
   @override
   void initState() {
@@ -210,6 +223,29 @@ class _LogViewerPageState extends State<LogViewerPage> {
     });
   }
 
+  Future<void> _openLogFile() async {
+    final path = await widget.filePicker.openLogFile();
+    if (path == null || !mounted) return;
+    final repository =
+        widget.schemaPresetRepository ?? _defaultSchemaPresetRepository;
+    final confirmed = await showSchemaMappingDialog(
+      context: context,
+      path: path,
+      presetRepository: repository,
+    );
+    if (confirmed == null || !mounted) return;
+    setState(() {
+      _confirmedImport = confirmed;
+      final availableFields = confirmed.schema.availableFieldIds;
+      _filters.removeWhere(
+        (filter) => !availableFields.contains(filter.fieldId),
+      );
+      _visibleColumnIds.removeWhere(
+        (fieldId) => !availableFields.contains(fieldId),
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final matchRangesByEntryIndex = {
@@ -225,7 +261,7 @@ class _LogViewerPageState extends State<LogViewerPage> {
       body: SafeArea(
         child: Column(
           children: [
-            const LogViewerHeader(),
+            LogViewerHeader(onOpenFile: _openLogFile),
             SearchPanel(
               keywords: _keywords,
               controller: _keywordController,
@@ -256,6 +292,7 @@ class _LogViewerPageState extends State<LogViewerPage> {
               onUpdateFilter: _updateFilter,
               onRemoveFilter: _removeFilter,
               onClearFilters: () => setState(_filters.clear),
+              availableFieldIds: _confirmedImport?.schema.availableFieldIds,
             ),
             Expanded(
               child:

@@ -21,6 +21,39 @@ final class SharedPreferencesStringStore implements StringPreferenceStore {
       preferences.setString(key, value);
 }
 
+/// Uses platform preferences when available and retains process-local values
+/// when the platform service is unavailable (for example, in widget tests).
+final class ResilientSharedPreferencesStringStore
+    implements StringPreferenceStore {
+  SharedPreferencesAsync? _preferences;
+  final Map<String, String> _fallbackValues = {};
+  var _platformUnavailable = false;
+
+  @override
+  Future<String?> getString(String key) async {
+    if (_platformUnavailable) return _fallbackValues[key];
+    try {
+      _preferences ??= SharedPreferencesAsync();
+      return await _preferences!.getString(key) ?? _fallbackValues[key];
+    } catch (_) {
+      _platformUnavailable = true;
+      return _fallbackValues[key];
+    }
+  }
+
+  @override
+  Future<void> setString(String key, String value) async {
+    _fallbackValues[key] = value;
+    if (_platformUnavailable) return;
+    try {
+      _preferences ??= SharedPreferencesAsync();
+      await _preferences!.setString(key, value);
+    } catch (_) {
+      _platformUnavailable = true;
+    }
+  }
+}
+
 final class SchemaPresetRepository {
   SchemaPresetRepository(this.store);
 

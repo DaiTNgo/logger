@@ -12,6 +12,7 @@ class FilterStrip extends StatelessWidget {
     required this.onUpdateFilter,
     required this.onRemoveFilter,
     required this.onClearFilters,
+    this.availableFieldIds,
   });
 
   final List<DltFilter> filters;
@@ -21,6 +22,14 @@ class FilterStrip extends StatelessWidget {
   final ValueChanged<DltFilter> onUpdateFilter;
   final ValueChanged<String> onRemoveFilter;
   final VoidCallback onClearFilters;
+  final Set<String>? availableFieldIds;
+
+  Iterable<DltFilterDefinition> get _availableDefinitions =>
+      dltFilterDefinitions.where(
+        (definition) =>
+            availableFieldIds == null ||
+            availableFieldIds!.contains(definition.id),
+      );
 
   @override
   Widget build(BuildContext context) => Container(
@@ -136,7 +145,7 @@ class FilterStrip extends StatelessWidget {
       context: context,
       position: position,
       items: [
-        for (final definition in dltFilterDefinitions)
+        for (final definition in _availableDefinitions)
           PopupMenuItem(
             key: Key('add_filter_${definition.id}'),
             value: definition.id,
@@ -157,7 +166,7 @@ class FilterStrip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            for (final definition in dltFilterDefinitions)
+            for (final definition in _availableDefinitions)
               InkWell(
                 key: Key('view_column_option_${definition.id}'),
                 onTap: () => setDropdownState(
